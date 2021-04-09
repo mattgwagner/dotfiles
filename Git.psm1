@@ -30,8 +30,13 @@ function Update-AllRepositories
     }
 }
 
+
 if(!(Test-Path 'C:\tools\poshgit\dahlbyk-posh-git*'))
 {
+    $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
+
+    & "$Here\Ensure-Chocolatey.ps1"
+
     choco install poshgit
 }
 
