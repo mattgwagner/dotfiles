@@ -4,6 +4,10 @@ $env:Path = "$($env:Path);$Here;C:\Program Files\nodejs"
 
 & "$Here\Ensure-Chocolatey.ps1"
 
+& "$Here\Ensure-OhMyPosh.ps1"
+
+Set-PoshPrompt mt
+
 Import-Module $Here\Git.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\Common.psm1 -DisableNameChecking -Force
