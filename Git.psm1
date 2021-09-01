@@ -42,6 +42,8 @@ if(!(Test-Path 'C:\tools\poshgit\dahlbyk-posh-git*'))
 
 Import-Module (Resolve-Path 'C:\tools\poshgit\dahlbyk-posh-git*\src\posh-git.psd1')
 
+$env:POSH_GIT_ENABLED = $true;
+
 $env:GIT_SSH = "C:\WINDOWS\System32\OpenSSH\ssh.exe"
 
 Start-SshAgent -Silent
