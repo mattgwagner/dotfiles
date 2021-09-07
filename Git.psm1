@@ -8,7 +8,7 @@ function Execute-GitPullRebasePrune
 {
     git stash
     git fetch --prune
-    git rebase origin/main
+    git rebase $HEAD
     git stash pop
 }
 Set-Alias gitp Execute-GitPullRebasePrune
