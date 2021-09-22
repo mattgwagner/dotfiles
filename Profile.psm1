@@ -2,6 +2,8 @@ $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
 $env:Path = "$($env:Path);$Here;C:\Program Files\nodejs"
 
+Set-ExecutionPolicy Unrestricted process
+
 & "$Here\Ensure-Chocolatey.ps1"
 
 & "$Here\Ensure-OhMyPosh.ps1"
