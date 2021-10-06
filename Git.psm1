@@ -34,7 +34,7 @@ function Reset-LocalRepo
 {
     git clean -X -d -f
     dotnet nuget locals --clear all
-    dotnet tools retore
+    dotnet tool retore
 }
 
 
