@@ -30,6 +30,13 @@ function Update-AllRepositories
     }
 }
 
+function Reset-LocalRepo
+{
+    git clean -X -d -f
+    dotnet nuget locals --clear all
+    dotnet tools retore
+}
+
 
 if(!(Test-Path 'C:\tools\poshgit\dahlbyk-posh-git*'))
 {
