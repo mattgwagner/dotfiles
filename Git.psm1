@@ -13,6 +13,13 @@ function Execute-GitPullRebasePrune
 }
 Set-Alias gitp Execute-GitPullRebasePrune
 
+function Execute-GitRebaseAndPush
+{
+    gitp
+    git push
+}
+Set-Alias gits Execute-GitRebaseAndPush
+
 function Update-AllRepositories
 {
     # Cycle through all of the top level folders and pull the latest
