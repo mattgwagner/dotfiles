@@ -16,6 +16,8 @@ Import-Module $Here\Common.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\Docker\Docker.psm1 -DisableNameChecking -Force
 
+Import-Module $Here\GitHub.psm1
+
 New-PSDrive -Root $Code -Name Code -PSProvider FileSystem -Scope Global
 
 Write-Host ""
