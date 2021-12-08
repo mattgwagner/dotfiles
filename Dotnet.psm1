@@ -1,9 +1,9 @@
 
-function Check-DotnetUpgrade
+function Check-DotnetUpgrade($Project)
 {
     Ensure-DotnetUpgradeAssistant
 
-    upgrade-assistant analyze
+    upgrade-assistant analyze $Project
 }
 
 function Ensure-DotnetUpgradeAssistant
