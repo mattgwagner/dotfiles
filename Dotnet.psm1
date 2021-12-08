@@ -8,7 +8,7 @@ function Check-DotnetUpgrade
 
 function Ensure-DotnetUpgradeAssistant
 {
-    dotnet tool install -g upgrade-assistant
+    dotnet tool install -g upgrade-assistant --ignore-failed-sources
 }
 
 Export-ModuleMember -Alias * -Function *
