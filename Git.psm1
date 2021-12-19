@@ -1,3 +1,6 @@
+git config --global init.defaultBranch main
+git config --global user.name "mattgwagner"
+
 function Execute-GitAmend
 {
     git commit --amend --no-edit
