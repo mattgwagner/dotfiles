@@ -4,4 +4,4 @@ param (
 
 $Repos = gh api "https://api.github.com/orgs/$Organization/repos"
 
-return Convert-FromJson $Repos
+return ConvertFrom-Json $Repos
