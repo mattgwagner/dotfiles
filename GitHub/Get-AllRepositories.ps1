@@ -2,7 +2,7 @@ param (
     $Organization
 )
 
-$Repos = New-Object Collections.Generic.List
+$Repos = [System.Collections.ArrayList]@()
 
 $Retrieved = 0;
 
