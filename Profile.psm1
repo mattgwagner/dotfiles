@@ -18,7 +18,7 @@ Import-Module $Here\Docker\Docker.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\Dotnet.psm1 -DisableNameChecking -Force
 
-Import-Module $Here\GitHub\GitHub.psm1
+Import-Module $Here\GitHub\AutoComplete.psm1
 
 New-PSDrive -Root $Code -Name Code -PSProvider FileSystem -Scope Global
 
