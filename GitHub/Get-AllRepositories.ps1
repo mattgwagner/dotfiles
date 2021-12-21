@@ -10,7 +10,7 @@ $Page = 0;
 
 do
 {
-    Write-Output "Getting Repository Page $Page..."
+    Write-Host "Getting Repository Page $Page..."
 
     $Results = gh api "https://api.github.com/orgs/$Organization/repos?page=$Page"
 
@@ -25,7 +25,7 @@ do
 
     $Page += 1
 
-    Write-Output "Retrieved $Retrieved more repos, $($Repos.Count) so far"
+    Write-Host "Retrieved $Retrieved more repos, $($Repos.Count) so far"
 }
 while($Retrieved -gt 0);
 
