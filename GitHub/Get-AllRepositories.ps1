@@ -18,6 +18,9 @@ do
     }
 
     $Retrieved = $FromJson.Count
+
+
+    Write-Output "Retrieved $($FromJson.Count) more repos, $Retrieved so far"
 }
 while($Retrieved -gt 0);
 
