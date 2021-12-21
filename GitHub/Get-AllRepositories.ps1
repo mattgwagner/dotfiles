@@ -6,9 +6,13 @@ $Repos = [System.Collections.ArrayList]@()
 
 $Retrieved = 0;
 
+$Page = 0;
+
 do
 {
-    $Results = gh api "https://api.github.com/orgs/$Organization/repos?per_page=100"
+    Write-Output "Getting Repository Page $Page..."
+
+    $Results = gh api "https://api.github.com/orgs/$Organization/repos?page=$Page"
 
     $FromJson = ConvertFrom-Json $Results
 
@@ -18,6 +22,8 @@ do
     }
 
     $Retrieved = $FromJson.Count
+
+    $Page += 1
 
     Write-Output "Retrieved $Retrieved more repos, $($Repos.Count) so far"
 }
