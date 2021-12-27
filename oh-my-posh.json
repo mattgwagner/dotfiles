@@ -47,7 +47,7 @@
         {
           "type": "az",
           "style": "powerline",
-          "powerline_symbol": "\uE0B0",
+          "powerline_symbol": "",
           "foreground": "#000000",
           "background": "#9ec3f0",
           "properties": {
