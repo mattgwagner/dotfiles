@@ -10,7 +10,7 @@ Set-Alias amend Execute-GitAmend
 function Execute-GitPullRebasePrune
 {
     git stash
-    git fetch --prune
+    git fetch --prune --recurse-submodules
     git rebase $HEAD
     git stash pop
 }
