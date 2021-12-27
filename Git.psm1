@@ -10,7 +10,8 @@ Set-Alias amend Execute-GitAmend
 function Execute-GitPullRebasePrune
 {
     git stash
-    git fetch --prune --recurse-submodules
+    git submodule update --remote --rebase
+    git fetch --prune    
     git rebase $HEAD
     git stash pop
 }
@@ -46,7 +47,6 @@ function Reset-LocalRepo
     dotnet nuget locals --clear all
     dotnet tool retore
 }
-
 
 if(!(Test-Path 'C:\tools\poshgit\dahlbyk-posh-git*'))
 {
