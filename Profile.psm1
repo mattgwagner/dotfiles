@@ -8,8 +8,6 @@ Set-ExecutionPolicy Unrestricted process
 
 & "$Here\Ensure-OhMyPosh.ps1"
 
-Set-PoshPrompt mt
-
 Import-Module $Here\Git.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\Common.psm1 -DisableNameChecking -Force

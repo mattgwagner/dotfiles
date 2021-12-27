@@ -1,22 +1,82 @@
 {
-    "final_space": true,
-    "blocks": [
-      {
-        "type": "prompt",
-        "alignment": "left",
-        "segments": [
-          {
-            "type": "path",
-            "style": "powerline",
-            "powerline_symbol": "\uE0B0",
-            "foreground": "#ffffff",
-            "background": "#61AFEF",
-            "properties": {
-              "prefix": " \uE5FF ",
-              "style": "folder"
-            }
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "final_space": true,
+  "blocks": [
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "type": "session",
+          "style": "diamond",
+          "foreground": "#ffffff",
+          "background": "#B4009E",
+          "leading_diamond": "",
+          "trailing_diamond": "",
+          "properties": {
+            "prefix": "",
+            "template": "{{ .UserName }}"
           }
-        ]
-      }
-    ]
-  }
+        },
+        {
+          "type": "path",
+          "style": "powerline",
+          "powerline_symbol": "",
+          "foreground": "#000000",
+          "background": "#FFFF00",
+          "properties": {
+            "style": "folder"
+          }
+        },
+        {
+          "type": "git",
+          "style": "powerline",
+          "powerline_symbol": "",
+          "foreground": "#ffffff",
+          "background": "#4E44FF",
+          "properties": {
+            "fetch_stash_count": true,
+            "fetch_status": false,
+            "fetch_upstream_icon": true,
+            "branch_icon": "",
+            "template": "{{ .UpstreamIcon }}{{ .HEAD }}{{ if gt .StashCount 0 }}  {{ .StashCount }}{{ end }}",
+            "prefix": " ➜ (",
+            "postfix": ") "
+          }
+        },
+        {
+          "type": "az",
+          "style": "powerline",
+          "powerline_symbol": "\uE0B0",
+          "foreground": "#000000",
+          "background": "#9ec3f0",
+          "properties": {
+            "template": "{{ .EnvironmentName }}",
+            "prefix": " \uFD03 "
+          }
+        },
+        {
+          "type": "node",
+          "style": "powerline",
+          "powerline_symbol": "",
+          "foreground": "#ffffff",
+          "background": "#4e903d",
+          "properties": {
+            "prefix": "  "
+          }
+        },
+        {
+          "type": "time",
+          "style": "diamond",
+          "trailing_diamond": "",
+          "foreground": "#ffffff",
+          "background": "#16C60C",
+          "properties": {
+            "prefix": " ♥ ",
+            "time_format": "15:04"
+          }
+        }
+      ]
+    }
+  ]
+}
