@@ -1,6 +1,6 @@
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-$Code = Join-Path $($env:USERPROFILE) "Code"
+$Code = Join-Path $Home "Code"
 
 if(!(test-path $Code))
 {
