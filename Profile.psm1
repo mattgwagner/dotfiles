@@ -1,10 +1,13 @@
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-$env:Path = "$($env:Path);$Here;C:\Program Files\nodejs"
+if($IsWindows)
+{
+    $env:Path = "$($env:Path);$Here;C:\Program Files\nodejs"
 
-Set-ExecutionPolicy Unrestricted process
+    Set-ExecutionPolicy Unrestricted process
 
-& "$Here\Ensure-Chocolatey.ps1"
+    & "$Here\Ensure-Chocolatey.ps1" 
+}
 
 & "$Here\Ensure-OhMyPosh.ps1"
 
@@ -18,10 +21,17 @@ Import-Module $Here\Dotnet.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\GitHub\GitHub.psm1 -DisableNameChecking -Force
 
-New-PSDrive -Root $Code -Name Code -PSProvider FileSystem -Scope Global
+if($IsWindows)
+{
+    New-PSDrive -Root $Code -Name Code -PSProvider FileSystem -Scope Global
 
-Write-Host ""
-Write-Host "Mapped $Code to Code:"
-Write-Host ""
+    Write-Host ""
+    Write-Host "Mapped $Code to Code:"
+    Write-Host ""
 
-Push-Location "Code:"
+    Push-Location "Code:"
+}
+if($IsMacOs)
+{
+    Push-Location "$Home/Code"
+}
