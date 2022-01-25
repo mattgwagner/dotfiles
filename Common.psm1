@@ -13,4 +13,9 @@ if(!(test-path $Code))
 function cd...  { cd ..\.. }
 function cd.... { cd ..\..\.. }
 
+function New-ShellAs($user)
+{
+    runas.exe /netonly /user:$user pwsh
+}
+
 Export-ModuleMember -variable * -Function *
