@@ -18,9 +18,9 @@ function New-ShellAs($user)
     runas.exe /netonly /savecred /user:$user pwsh
 }
 
-function Sudo($app)
+function Sudo($app, $user)
 {
-    runas.exe /netonly /savecred $app
+    runas.exe /netonly /savecred /user:$user $app
 }
 
 Export-ModuleMember -variable * -Function *
