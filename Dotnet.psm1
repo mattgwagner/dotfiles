@@ -17,4 +17,4 @@ function Ensure-DotnetUpgradeAssistant
     dotnet tool install -g upgrade-assistant --ignore-failed-sources
 }
 
-Export-ModuleMember -Alias * -Function * -Variable
+Export-ModuleMember -Alias * -Function * -Variable *
