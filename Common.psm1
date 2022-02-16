@@ -15,7 +15,7 @@ function cd.... { cd ..\..\.. }
 
 function New-ShellAs($user)
 {
-    runas.exe /netonly /user:$user pwsh
+    runas.exe /netonly /savecred /user:$user pwsh
 }
 
 Export-ModuleMember -variable * -Function *
