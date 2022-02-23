@@ -17,7 +17,7 @@ $NuGet = & "$Here\Ensure-Nuget.ps1"
 $RunnerPackage = "WebConfigTransformRunner"
 $RunnerVersion = "1.0.0.1"
 
-$Runner = Join-Path $Here "$RunnerPackage.exe"
+$Runner = Join-Path $Here "$RunnerPackage.$RunnerVersion" "tools" "$RunnerPackage.exe"
 
 if ( !(Test-Path $Runner) )
 {
