@@ -1,12 +1,6 @@
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-$SolutionRoot = (Split-Path -parent $Here)
-
-$Src = Join-Path $SolutionRoot "src"
-
-$NugetFolder = Join-Path $Src ".nuget"
-
-$NuGetExe = "$NugetFolder\nuget.exe"
+$NuGetExe = "$Here\nuget.exe"
 
 if(!(Test-Path $NuGetExe))
 {
