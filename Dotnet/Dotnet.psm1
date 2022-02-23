@@ -24,4 +24,4 @@ function Ensure-DotnetUpgradeAssistant
     dotnet tool install -g upgrade-assistant --ignore-failed-sources
 }
 
-Export-ModuleMember -Alias * -Function * -Variable *
+Export-ModuleMember -Alias * -Function * -Variable Vs2019, Vs2022, Ssms, MsBuild
