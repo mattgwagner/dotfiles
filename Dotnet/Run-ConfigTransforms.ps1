@@ -8,4 +8,4 @@ $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
 Import-Module "$Here\Dotnet.psm1"
 
-& $MsBuild "$Here\Tranform.msbuild" /p:SourceConfig=$Source /p:valuesConfig=$Replacement /p:outputConfig=$Output
+& $MsBuild "$Here\Transform.msbuild" /p:SourceConfig=$Source /p:valuesConfig=$Replacement /p:outputConfig=$Output
