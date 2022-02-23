@@ -11,15 +11,15 @@ if($IsWindows)
 
 & "$Here\Ensure-OhMyPosh.ps1"
 
-Import-Module $Here\Git.psm1 -DisableNameChecking -Force
+Import-Module $Here\Git.psm1 -DisableNameChecking -Force -NoClobber
 
-Import-Module $Here\Common.psm1 -DisableNameChecking -Force
+Import-Module $Here\Common.psm1 -DisableNameChecking -Force -NoClobber
 
-Import-Module $Here\Docker\Docker.psm1 -DisableNameChecking -Force
+Import-Module $Here\Docker\Docker.psm1 -DisableNameChecking -Force -NoClobber
 
-Import-Module $Here\Dotnet\Dotnet.psm1 -DisableNameChecking -Force
+Import-Module $Here\Dotnet\Dotnet.psm1 -DisableNameChecking -Force -NoClobber
 
-Import-Module $Here\GitHub\GitHub.psm1 -DisableNameChecking -Force
+Import-Module $Here\GitHub\GitHub.psm1 -DisableNameChecking -Force -NoClobber
 
 if($IsWindows)
 {
