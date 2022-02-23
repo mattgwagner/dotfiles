@@ -4,6 +4,8 @@
 
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
+$env:PATH += ";$Here"
+
 $Vs2019 = "C:\Program Files (x86)\Microsoft Visual Studio\2019\Professional\Common7\IDE\devenv.exe"
 
 $Vs2022 = "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\IDE\devenv.exe"
