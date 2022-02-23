@@ -1,6 +1,8 @@
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-& "$Here\Ensure-Chocolatey.ps1"
+$Root = "$(Split-Path -parent $Here)"
+
+& "$Root\Ensure-Chocolatey.ps1"
 
 if(!(Get-Command vswhere -ErrorAction SilentlyContinue))
 {
