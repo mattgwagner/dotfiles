@@ -48,6 +48,8 @@ function Reset-LocalRepo
     dotnet tool retore
 }
 
+# This only works on Powershell Core
+
 if($IsWindows)
 {
     if(!(Test-Path 'C:\tools\poshgit\dahlbyk-posh-git*'))
