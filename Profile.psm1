@@ -17,7 +17,7 @@ Import-Module $Here\Common.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\Docker\Docker.psm1 -DisableNameChecking -Force
 
-Import-Module $Here\Dotnet.psm1 -DisableNameChecking -Force
+Import-Module $Here\Dotnet\Dotnet.psm1 -DisableNameChecking -Force
 
 Import-Module $Here\GitHub\GitHub.psm1 -DisableNameChecking -Force
 
