@@ -11,6 +11,6 @@ if(!(Get-Command vswhere -ErrorAction SilentlyContinue))
 
 $MSBuild = vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe | select-object -first 1
 
-Write-Output "MSBuild Path: $MSBuild"
+Write-Host "MSBuild Path: $MSBuild"
 
 return $MSBuild
