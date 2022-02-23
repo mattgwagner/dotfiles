@@ -1,11 +1,27 @@
-param (
-    $Source = "app.config",
-    $Replacement = "app.Release.config",
-    $Output = "Release.config"
+##
+## This script will run a configuration transform on an Web/App.config file for a given environment
+##
+## Usage: .\Run-ConfigTransforms.ps1 .\App.Web\Web.config .\App.Web\Web.Staging.config .\TransformResult.config
+##
+
+Param(
+	[String]$ConfigFile = "Web.config",
+	[String]$TransformFile = "Web.Test.config",
+	[String]$OutputFile = "TransformResult.config"
 )
 
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-Import-Module "$Here\Dotnet.psm1"
+$NuGet = & "$Here\Ensure-Nuget.ps1"
 
-& $MsBuild "$Here\Transform.msbuild" /p:SourceConfig=$Source /p:valuesConfig=$Replacement /p:outputConfig=$Output
+$RunnerPackage = "WebConfigTransformRunner"
+$RunnerVersion = "1.0.0.1"
+
+$Runner = Join-Path $Here "$RunnerPackage.exe"
+
+if ( !(Test-Path $Runner) )
+{
+	. $NuGet install $RunnerPackage -version $RunnerVersion -OutputDirectory $Here
+}
+
+. $Runner $ConfigFile $TransformFile $OutputFile
