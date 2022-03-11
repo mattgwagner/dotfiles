@@ -12,7 +12,7 @@ function Execute-GitPullRebasePrune
     git stash
     git submodule update --remote --rebase
     git fetch --prune    
-    git rebase $HEAD
+    git pull --rebase $HEAD
     git stash pop
 }
 Set-Alias gitp Execute-GitPullRebasePrune
