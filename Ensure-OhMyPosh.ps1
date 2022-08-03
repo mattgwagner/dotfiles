@@ -1,11 +1,10 @@
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-if(!(Get-Module -ListAvailable -Name oh-my-posh)) {
-    Install-Module oh-my-posh -Scope CurrentUser
+if( ! (Get-Command "oh-my-posh.exe" -ErrorAction SilentlyContinue))
+{
+    Set-ExecutionPolicy Bypass -Scope Process -Force; Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://ohmyposh.dev/install.ps1'))
+
+    & RefreshEnv.cmd
 }
 
-Import-Module oh-my-posh
-
-# oh-my-posh --init --shell pwsh --config $Here/oh-my-posh | Invoke-Expression
-
-Set-PoshPrompt -Theme $Here\oh-my-posh.json
+oh-my-posh init pwsh --config $Here\oh-my-posh.json | Invoke-Expression
