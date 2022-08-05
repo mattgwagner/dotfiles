@@ -2,6 +2,11 @@ $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
 $Root = "$(Split-Path -parent $Here)"
 
+if(!$IsWindows)
+{
+    return ""
+}
+
 & "$Root\Ensure-Chocolatey.ps1"
 
 if(!(Get-Command vswhere -ErrorAction SilentlyContinue))
