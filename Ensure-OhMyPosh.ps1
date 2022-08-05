@@ -1,6 +1,6 @@
 $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-if( ! (Get-Command "oh-my-posh.exe" -ErrorAction SilentlyContinue))
+if( ! (Get-Command "oh-my-posh" -ErrorAction SilentlyContinue))
 {
     if($IsWindows)
     {
