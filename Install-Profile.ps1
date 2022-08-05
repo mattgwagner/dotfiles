@@ -12,4 +12,6 @@ if (!(test-path $profile))
     New-Item -path $profile -type file -force
 }
 
-Add-Content $profile "Import-Module ""$ScriptPath\Profile.psm1"" -DisableNameChecking"
+$ProfilePath = Join-Path $ScriptPath "Profile.psm1"
+
+Add-Content $profile "Import-Module ""$ProfilePath"" -DisableNameChecking"
