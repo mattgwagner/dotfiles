@@ -1,0 +1,1 @@
+Using https://github.com/NginxProxyManager/nginx-proxy-manager to setup routing to internal hosts.
