@@ -1,0 +1,4 @@
+tunnel: d41e26e0-a1b4-4609-a829-4359afe2f388
+credentials-file: C:\Users\Administrator\.cloudflared\d41e26e0-a1b4-4609-a829-4359afe2f388.json
+ingress:
+  - service: http://localhost:80
