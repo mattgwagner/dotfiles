@@ -5,5 +5,12 @@ services:
     container_name: cloudflare-tunnel
     restart: unless-stopped
     command: tunnel run
+    networks:
+      - proxy
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+
+networks:
+  proxy:
+    driver: bridge
+    external: true
