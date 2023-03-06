@@ -1,7 +1,16 @@
 version: "3.8"
 
 services:
+  nocodb:version: "3.8"
+
+services:
   nocodb:
+    image: nocodb/nocodb:latest
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+    volumes:
+      - ./nocodb:/usr/app/data
     image: nocodb/nocodb:latest
     ports:
       - "8080:8080"
