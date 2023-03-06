@@ -16,4 +16,4 @@ services:
       - "8080:8080"
     restart: unless-stopped
     volumes:
-      - ./nocodb:/usr/app/data
+      - ./data:/usr/app/data

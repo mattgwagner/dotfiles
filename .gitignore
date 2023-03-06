@@ -330,3 +330,5 @@ ASALocalRun/
 .mfractor/
 
 Nginx/data
+NocoDb/data
+.DS_Store
