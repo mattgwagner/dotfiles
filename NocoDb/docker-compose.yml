@@ -11,9 +11,3 @@ services:
     restart: unless-stopped
     volumes:
       - ./nocodb:/usr/app/data
-    image: nocodb/nocodb:latest
-    ports:
-      - "8080:8080"
-    restart: unless-stopped
-    volumes:
-      - ./data:/usr/app/data
