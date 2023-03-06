@@ -331,4 +331,5 @@ ASALocalRun/
 
 Nginx/data
 NocoDb/data
+Appsmith/stacks
 .DS_Store
