@@ -1,0 +1,1 @@
+You can add existing Sqlite databases as data sources by adding them to the 'data' folder then adding them as a Data Source in NoCodb with the file path '/usr/app/data/{Filename}'
