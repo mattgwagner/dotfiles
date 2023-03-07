@@ -9,6 +9,8 @@ services:
       - proxy
     environment:
       - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 networks:
   proxy:
