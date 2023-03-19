@@ -11,4 +11,4 @@ services:
     volumes:
       - ./data:/data
     ports:
-      - "8080:80" # UI
+      - "8081:80" # UI
