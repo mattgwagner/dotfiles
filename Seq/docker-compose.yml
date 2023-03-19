@@ -5,6 +5,7 @@ services:
   seq.logging:
     image: datalust/seq:latest
     container_name: seq.logging
+    restart: unless-stopped
     environment:
       - ACCEPT_EULA=Y
     volumes:
