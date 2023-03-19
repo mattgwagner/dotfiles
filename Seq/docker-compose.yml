@@ -3,12 +3,11 @@ version: '3.5'
 services:
 
   seq.logging:
-    image: datalust/seq:2021.1
+    image: datalust/seq:latest
     container_name: seq.logging
     environment:
       - ACCEPT_EULA=Y
     volumes:
-        # Data is the name of my Azure storage mount
-      - Data:/data
+      - ./data:/data
     ports:
-      - "80:80" # UI
+      - "8080:80" # UI
