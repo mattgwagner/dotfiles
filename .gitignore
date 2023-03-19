@@ -334,3 +334,4 @@ Nginx/letsencrypt
 NocoDb/data
 Appsmith/data
 .DS_Store
+Cloudflared/.env
