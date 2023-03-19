@@ -11,6 +11,5 @@ services:
     volumes:
       - ./data:/appsmith-stacks
     restart: unless-stopped
-    # Uncomment the lines below to enable auto-update
     labels:
       com.centurylinklabs.watchtower.enable: "true"
