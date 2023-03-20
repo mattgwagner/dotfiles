@@ -4,6 +4,8 @@ services:
 
   chromecast:
     #image: ryanbarrett/catt-chromecast:latest
-    build: Dockerfile
+    build: 
+      context: .
+      dockerfile: ./Dockerfile
     restart: unless-stopped
     command: catt --device 'Office Dashboard' cast_site 'https://redleg.app'
