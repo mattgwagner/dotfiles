@@ -13,6 +13,8 @@ services:
   redis-commander:
     container_name: redis-commander
     image: rediscommander/redis-commander:latest
+    env_file:
+      - stack.env
     environment:
       - REDIS_HOSTS=local:redis:6379
     ports:
