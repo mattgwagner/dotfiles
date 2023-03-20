@@ -8,4 +8,5 @@ services:
       dockerfile: ./Dockerfile
     restart: unless-stopped
     network_mode: bridge
-    command: catt --device 'Office Dashboard' cast_site 'https://redleg.app'
+    command: catt --device 192.168.86.45 cast_site 'https://redleg.app'
+    #command: catt scan
