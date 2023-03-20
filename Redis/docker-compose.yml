@@ -13,9 +13,9 @@ services:
   redis-commander:
     container_name: redis-commander
     image: rediscommander/redis-commander:latest
-    env_file:
-      - stack.env
     environment:
       - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=${HTTP_USER}
+      - HTTP_PASSWORD=${HTTP_PASSWORD}
     ports:
       - "8888:8081"
