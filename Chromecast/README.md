@@ -8,4 +8,6 @@ Usage: catt [options] command [args]
 
 --device NAME_OR_IP
 
-add
+This isn't working with device names likely because of discovery issues inside Docker to the outside network.
+
+Another option might be: https://github.com/andyoakley/cast-from-container
