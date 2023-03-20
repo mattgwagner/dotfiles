@@ -7,5 +7,5 @@ services:
       context: .
       dockerfile: ./Dockerfile
     restart: unless-stopped
-    command: catt --device 192.168.86.45 cast_site 'https://dakboard.com/display/uuid/632dc0ca-123142-bc2f-27fff209'
+    command: catt --device 192.168.86.45 cast_site 'https://dakboard.com/screen/uuid/64189fd8-123142-ee7a-2a4de607ea04'
     #command: catt scan
