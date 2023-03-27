@@ -11,8 +11,8 @@ services:
     #command: catt scan
     
     # Catt seems to time out periodically, and benefits from just restarting the container
-    restarter:
-      image: docker
-      volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
-      command: [ "/bin/sh", "-c", "while true; do sleep 7200; docker restart chromecast; done" ]
-      restart: unless-stopped
+  restarter:
+    image: docker
+    volumes: [ "/var/run/docker.sock:/var/run/docker.sock" ]
+    command: [ "/bin/sh", "-c", "while true; do sleep 7200; docker restart chromecast; done" ]
+    restart: unless-stopped
