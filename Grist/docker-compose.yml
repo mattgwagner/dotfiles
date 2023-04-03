@@ -6,7 +6,6 @@ services:
     ports:
       - "8484:443"
     environment:
-      - APP_HOME_URL="https://grist.mattgwagner.com"
       - PORT=443
     volumes:
       - ./data:/persist
