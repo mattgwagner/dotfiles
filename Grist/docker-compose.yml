@@ -4,9 +4,7 @@ services:
   grist:
     image: gristlabs/grist:latest
     ports:
-      - "8484:443"
-    environment:
-      - PORT=443
+      - "8484:8484"
     volumes:
       - ./data:/persist
     labels:
