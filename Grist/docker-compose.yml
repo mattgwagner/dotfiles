@@ -9,3 +9,5 @@ services:
       - APP_HOME_URL="https://grist.mattgwagner.com"
     volumes:
       - ./data:/persist
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
