@@ -5,5 +5,7 @@ services:
     image: gristlabs/grist:latest
     ports:
       - "8484:8484"
+    environment:
+      - APP_HOME_URL="https://grist.mattgwagner.com"
     volumes:
       - ./data:/persist
