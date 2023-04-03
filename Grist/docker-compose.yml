@@ -5,3 +5,5 @@ services:
     image: gristlabs/grist:latest
     ports:
       - "8484:8484"
+    volumes:
+      - ./data:/persist
