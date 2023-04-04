@@ -3,8 +3,6 @@ services:
   baserow:
     container_name: baserow
     image: baserow/baserow:latest
-    environment:
-      BASEROW_PUBLIC_URL: 'https://baserow.mattgwagner.com'
     ports:
       - "4443:443"
     volumes:
