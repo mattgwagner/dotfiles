@@ -13,3 +13,5 @@ services:
       - "8082:80"
     volumes:
       - ./data:/baserow/data
+    labels:
+      - 'com.centurylinklabs.watchtower.enable=true'
