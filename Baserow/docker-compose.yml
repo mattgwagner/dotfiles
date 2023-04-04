@@ -3,6 +3,11 @@ services:
   baserow:
     container_name: baserow
     image: baserow/baserow:latest
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - BASEROW_PUBLIC_URL=${BASEROW_PUBLIC_URL}
     ports:
       - "4443:443"
       - "8082:80"
