@@ -1,18 +1,10 @@
 version: "3"
 
-networks:
-    default:
-      driver: bridge
-
 services:
     db:
         image: "mcr.microsoft.com/mssql/server"
         environment:
-            SA_PASSWORD: "SuperSecurePw!"
+            SA_PASSWORD: ${SQL_SA_PASSWORD}
             ACCEPT_EULA: "Y"
         ports:
             - "1433:1433"
-        networks:
-            default:
-                aliases:
-                - sql.local
