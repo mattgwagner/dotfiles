@@ -9,3 +9,8 @@ services:
             MSQL_PID: Developer
         ports:
             - "1433:1433"
+        volumes:
+            - mssql-data:/var/opt/mssql/data:delegated
+
+volumes:
+    mssql-data:
