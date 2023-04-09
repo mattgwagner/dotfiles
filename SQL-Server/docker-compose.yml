@@ -6,5 +6,6 @@ services:
         environment:
             SA_PASSWORD: ${SQL_SA_PASSWORD}
             ACCEPT_EULA: "Y"
+            MSQL_PID: Developer
         ports:
             - "1433:1433"
