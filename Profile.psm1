@@ -25,13 +25,13 @@ if($IsWindows)
 {
     New-PSDrive -Root $Code -Name Code -PSProvider FileSystem -Scope Global
 
-    Load-EnvFile
-
     Write-Host ""
     Write-Host "Mapped $Code to Code:"
     Write-Host ""
 
     Push-Location "Code:"
+    
+    Set-DotEnv
 }
 if($IsMacOs)
 {
