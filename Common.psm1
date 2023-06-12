@@ -23,6 +23,8 @@ function Sudo($app, $user)
     runas.exe /netonly /savecred /user:$user $app
 }
 
+## This is based on the dotenv package https://www.powershellgallery.com/packages/dotenv
+
 <#
 .SYNOPSIS
 Set-DotEnv loads from local .ENV files
