@@ -23,4 +23,12 @@ function Sudo($app, $user)
     runas.exe /netonly /savecred /user:$user $app
 }
 
+function Load-EnvFile()
+{
+    get-content .env | foreach {
+        $name, $value = $_.split('=')
+        set-content env:\$name $value
+    }
+}
+
 Export-ModuleMember -variable * -Function *
