@@ -1,0 +1,12 @@
+version: "3"
+services:
+  android:
+    image: budtmo/docker-android:emulator_13.0
+    ports:
+      - "6080:6080"
+    volumes:
+      - ./data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - EMULATOR_DEVICE="Samsung Galaxy S10"
+      - WEB_VNC=true
