@@ -12,3 +12,5 @@ services:
       - WEB_VNC=true
       - WEB_LOG=true
       - WEB_LOG_PORT=9000
+    devices:
+      - "/dev/kvm"
