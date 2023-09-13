@@ -34,7 +34,7 @@ function Update-AllRepositories
 
         if(Test-Path .git)
         {
-            Write-Ouput $"Updating $(dir)"
+            Write-Host $"Updating $(dir)"
 
             Execute-GitPullRebasePrune
         }
