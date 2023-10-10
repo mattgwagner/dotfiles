@@ -10,7 +10,7 @@ services:
     ports:
       #- 80:80 # Can be removed when running behind a web server or reverse proxy (like Apache, Nginx, Cloudflare Tunnel and else). See https://github.com/nextcloud/all-in-one/blob/main/reverse-proxy.md
       - 8082:8080
-      - 11000:110000
+      - 11000:11000
       #- 8443:8443 # Can be removed when running behind a web server or reverse proxy (like Apache, Nginx, Cloudflare Tunnel and else). See https://github.com/nextcloud/all-in-one/blob/main/reverse-proxy.md
     environment: # Is needed when using any of the options below
       - SKIP_DOMAIN_VALIDATION=true
