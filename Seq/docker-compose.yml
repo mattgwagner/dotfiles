@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     environment:
       - ACCEPT_EULA=Y
+      - SEQ_API_CANONICALURI=https://logs.redleg.dev
     volumes:
       - ./data:/data
     ports:
