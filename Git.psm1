@@ -17,6 +17,15 @@ function Execute-GitPullRebasePrune
 }
 Set-Alias gitp Execute-GitPullRebasePrune
 
+function Execute-GitFetchPrune
+{
+    git stash
+    git submodule update --remote --rebase
+    git fetch --prune
+    git stash pop
+}
+Set-Alias gitf Execute-GitFetchPrune
+
 function Execute-GitRebaseAndPush
 {
     gitp
