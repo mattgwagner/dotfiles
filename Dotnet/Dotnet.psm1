@@ -14,6 +14,14 @@ $Ssms = "C:\Program Files (x86)\Microsoft SQL Server Management Studio 18\Common
 
 $MsBuild = (& "$Here\Get-Msbuild.ps1")
 
+# PowerShell parameter completion shim for the dotnet CLI
+Register-ArgumentCompleter -Native -CommandName dotnet -ScriptBlock {
+    param($wordToComplete, $commandAst, $cursorPosition)
+      dotnet complete --position $cursorPosition "$commandAst" | ForEach-Object {
+        [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_)
+      }
+  }
+
 function Check-DotnetUpgrade($Project)
 {
     Ensure-DotnetUpgradeAssistant
