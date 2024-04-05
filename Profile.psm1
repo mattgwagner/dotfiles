@@ -11,7 +11,7 @@ if($IsWindows)
 
 & "$Here\Ensure-OhMyPosh.ps1"
 
-Import-Module $Here\Git.psm1 -DisableNameChecking -Force -NoClobber
+Import-Module $Here\Git\Git.psm1 -DisableNameChecking -Force -NoClobber
 
 Import-Module $Here\Common.psm1 -DisableNameChecking -Force -NoClobber
 

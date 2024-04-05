@@ -59,26 +59,20 @@ function Reset-LocalRepo
     dotnet tool retore
 }
 
-# This only works on Powershell Core
+if (!(Get-InstalledModule posh-git))
+{
+    PowerShellGet\Install-Module posh-git -Scope CurrentUser -Force
+}
 
 if($IsWindows)
 {
-    if(!(Test-Path 'C:\tools\poshgit\dahlbyk-posh-git*'))
-    {
-        $Here = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-
-        & "$Here\Ensure-Chocolatey.ps1"
-
-        choco install poshgit
-    }
-
-    Import-Module (Resolve-Path 'C:\tools\poshgit\dahlbyk-posh-git*\src\posh-git.psd1')
-
     $env:POSH_GIT_ENABLED = $true;
 
     $env:GIT_SSH = "C:\WINDOWS\System32\OpenSSH\ssh.exe"
 
     Start-SshAgent -Silent
 }
+
+Import-Module posh-git
 
 Export-ModuleMember -Alias * -Function *
