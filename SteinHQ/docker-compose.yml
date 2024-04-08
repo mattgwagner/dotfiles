@@ -1,0 +1,15 @@
+services:
+  stein:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - STEIN_MONGO_URL=mongodb://mongo:27017/stein
+      - STEIN_CLIENT_ID=
+      - STEIN_CLIENT_SECRET=
+      - STEIN_CALLBACK_URL=
+  mongo:
+    image: mongo
+    restart: always
+    volumes:
+      - /data/db

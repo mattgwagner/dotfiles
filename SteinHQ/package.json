@@ -1,0 +1,16 @@
+{
+  "name": "stein-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "stein:start": "stein start",
+    "stein:stop": "stein stop"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "stein-core": "^0.0.2"
+  }
+}
