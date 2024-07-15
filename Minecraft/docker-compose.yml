@@ -10,4 +10,6 @@ services:
     environment:
       EULA: "TRUE"
       MOTD: Welcome to Wagnerland, powered by Red Leg Dev
+      INIT_MEMORY: 1G
+      MAX_MEMORY: 4G
     restart: unless-stopped
