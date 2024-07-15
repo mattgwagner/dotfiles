@@ -9,4 +9,5 @@ services:
       - ./data:/data
     environment:
       EULA: "TRUE"
+      MOTD: Welcome to Wagnerland, powered by Red Leg Dev
     restart: unless-stopped
