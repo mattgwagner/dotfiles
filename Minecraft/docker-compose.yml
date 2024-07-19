@@ -10,6 +10,16 @@ services:
     environment:
       EULA: "TRUE"
       MOTD: Welcome to Wagnerland, powered by Red Leg Dev
-      INIT_MEMORY: 1G
-      MAX_MEMORY: 4G
+    restart: unless-stopped
+  minecraft-2:
+    image: itzg/minecraft-server
+    stdin_open: true
+    tty: true
+    ports:
+      - "25566:25565"
+    volumes:
+      - ./data-2:/data
+    environment:
+      EULA: "TRUE"
+      MOTD: Welcome to Wagnerland 2, powered by Red Leg Dev
     restart: unless-stopped
