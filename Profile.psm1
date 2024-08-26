@@ -21,6 +21,8 @@ Import-Module $Here\Dotnet\Dotnet.psm1 -DisableNameChecking -Force -NoClobber
 
 Import-Module $Here\GitHub\GitHub.psm1 -DisableNameChecking -Force -NoClobber
 
+Import-Module $Here\..\Overrides.ps1 -DisableNameChecking -ErrorAction Ignore
+
 if($IsWindows)
 {
     New-PSDrive -Root $Code -Name Code -PSProvider FileSystem -Scope Global

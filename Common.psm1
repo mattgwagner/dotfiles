@@ -13,6 +13,11 @@ if(!(test-path $Code))
 function cd...  { cd ..\.. }
 function cd.... { cd ..\..\.. }
 
+function Go-ToCode 
+{
+    Push-Location $Code
+}
+
 function New-ShellAs($user)
 {
     runas.exe /netonly /savecred /user:$user pwsh
