@@ -1,1 +1,1 @@
-npx local-ssl-proxy --source 9001 --target 4981
+npx local-ssl-proxy --key localhost-key.pem --cert localhost.pem --source 9001 --target 4891
