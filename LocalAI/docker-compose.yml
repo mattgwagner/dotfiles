@@ -13,6 +13,7 @@ services:
       - "8080:8080"
     restart: unless-stopped
     environment:
+      - THREADS=4
       - CORS=1
       - CORS_ALLOWED_ORIGINS=* # Allow all origins
     volumes:
