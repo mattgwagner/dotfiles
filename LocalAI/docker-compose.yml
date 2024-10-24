@@ -1,6 +1,14 @@
 services:
   localai:
     image: localai/localai:latest-aio-cpu
+    # As initially LocalAI will download the models defined in PRELOAD_MODELS
+    # you might need to tweak the healthcheck values here according to your network connection.
+    # Here we give a timespan of 20m to download all the required files.
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/readyz" ]
+      interval: 1m
+      timeout: 20m
+      retries: 20
     ports:
       - "8080:8080"
     restart: unless-stopped
