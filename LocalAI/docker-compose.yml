@@ -12,5 +12,8 @@ services:
     ports:
       - "8080:8080"
     restart: unless-stopped
+    environment:
+      - CORS=1
+      - CORS_ALLOWED_ORIGINS=* # Allow all origins
     volumes:
       - ./models:/build/models:cached
