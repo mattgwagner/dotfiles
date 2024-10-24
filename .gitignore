@@ -336,3 +336,4 @@ Appsmith/data
 .DS_Store
 .env
 *.pem
+/LocalAI/models
