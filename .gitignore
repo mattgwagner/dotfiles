@@ -335,3 +335,4 @@ NocoDb/data
 Appsmith/data
 .DS_Store
 .env
+*.pem
