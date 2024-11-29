@@ -35,3 +35,15 @@ services:
       EULA: "TRUE"
       MOTD: Welcome to Wagnerland 3, powered by Red Leg Dev
     restart: unless-stopped
+  minecraft-4:
+    image: itzg/minecraft-server
+    stdin_open: true
+    tty: true
+    ports:
+      - "25568:25565"
+    volumes:
+      - ./data-3:/data
+    environment:
+      EULA: "TRUE"
+      MOTD: Welcome to Wagnerland 4, powered by Red Leg Dev
+    restart: unless-stopped
