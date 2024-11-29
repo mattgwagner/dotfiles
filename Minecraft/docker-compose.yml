@@ -42,7 +42,7 @@ services:
     ports:
       - "25568:25565"
     volumes:
-      - ./data-3:/data
+      - ./data-4:/data
     environment:
       EULA: "TRUE"
       MOTD: Welcome to Wagnerland 4, powered by Red Leg Dev
