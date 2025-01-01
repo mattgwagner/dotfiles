@@ -9,6 +9,7 @@ services:
     environment:
       - ACCEPT_EULA=Y
       - SEQ_API_CANONICALURI=https://logs.redleg.dev
+      - SEQ_API_FRAMEANCESTORS=dakboard.com
     volumes:
       - ./data:/data
     ports:
