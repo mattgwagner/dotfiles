@@ -35,6 +35,9 @@ services:
     image: ghcr.io/plausible/community-edition:v2.1.4
     restart: always
     command: sh -c "/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    ports:
+      - "8090:80"
+      - "8091:443"
     depends_on:
       plausible_db:
         condition: service_healthy
