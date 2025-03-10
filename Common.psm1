@@ -97,4 +97,4 @@ Function Set-DotEnv {
 
 }
 
-Export-ModuleMember -variable * -Function *
+Export-ModuleMember -variable * -Function * -Alias *
