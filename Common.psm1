@@ -18,6 +18,12 @@ function Go-ToCode
     Push-Location $Code
 }
 
+function Push-ReleaseBranch
+{
+    git pull origin main
+    git push origin main:release
+}
+
 function New-ShellAs($user)
 {
     runas.exe /netonly /savecred /user:$user pwsh
