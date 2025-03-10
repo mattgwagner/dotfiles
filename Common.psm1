@@ -23,6 +23,7 @@ function Push-ReleaseBranch
     git pull origin main
     git push origin main:release
 }
+Set-Alias -Name prb -Value Push-ReleaseBranch
 
 function New-ShellAs($user)
 {
