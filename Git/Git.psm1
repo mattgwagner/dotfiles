@@ -52,6 +52,17 @@ function Update-AllRepositories
     }
 }
 
+function Set-GitPolling
+{
+    # Every 10 seconds, pull latest from main
+
+    while ($true) {
+        git pull --rebase origin main
+    
+        Start-Sleep -Seconds 10
+    }
+}
+
 function Reset-LocalRepo
 {
     git clean -X -d -f
