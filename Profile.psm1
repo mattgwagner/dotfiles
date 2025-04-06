@@ -35,7 +35,3 @@ if($IsWindows)
     
     Set-DotEnv
 }
-if($IsMacOs)
-{
-    Push-Location "$Home/Code"
-}
