@@ -54,6 +54,7 @@ function Show-ProfileCommands {
     Write-Host "  New-ShellAs   -> Open new shell as different user"
     Write-Host "  Sudo          -> Run command as different user"
     Write-Host "  Set-DotEnv    -> Load environment variables from .env file"
+    Write-Host "  Start-BrowserTools -> Start debugging/audit tools for browser"
     
     Write-Host "`nType 'Get-Command -Module *' to see all available commands`n" -ForegroundColor Gray
 }
