@@ -37,3 +37,25 @@ if($IsWindows)
     
     Set-DotEnv
 }
+
+function Show-ProfileCommands {
+    Write-Host "`nAvailable Commands:" -ForegroundColor Cyan
+    Write-Host "==================" -ForegroundColor Cyan
+    
+    Write-Host "`nNavigation:" -ForegroundColor Yellow
+    Write-Host "  cd...     -> Go up two directories"
+    Write-Host "  cd....    -> Go up three directories"
+    Write-Host "  Go-ToCode -> Navigate to your Code directory"
+    
+    Write-Host "`nGit Commands:" -ForegroundColor Yellow
+    Write-Host "  prb (Push-ReleaseBranch) -> Pull from main and push to release branch"
+    
+    Write-Host "`nUtility Commands:" -ForegroundColor Yellow
+    Write-Host "  New-ShellAs   -> Open new shell as different user"
+    Write-Host "  Sudo          -> Run command as different user"
+    Write-Host "  Set-DotEnv    -> Load environment variables from .env file"
+    
+    Write-Host "`nType 'Get-Command -Module *' to see all available commands`n" -ForegroundColor Gray
+}
+
+Show-ProfileCommands
