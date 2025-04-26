@@ -57,5 +57,6 @@ services:
       - ./data-5:/data
     environment:
       EULA: "TRUE"
-      MEMORY: "2G"
+      MEMORY: "8G"
+      USE_AIKAR_FLAGS: "true"
     restart: unless-stopped
