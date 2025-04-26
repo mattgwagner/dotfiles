@@ -53,8 +53,9 @@ services:
     tty: true
     ports:
       - "25569:25565"
-    volumes:
+``    volumes:
       - ./data-5:/data
     environment:
       EULA: "TRUE"
+      MEMORY: "2G"
     restart: unless-stopped
