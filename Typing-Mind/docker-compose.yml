@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  mcp:
+    build: .
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - PORT=8080
+      - MCP_TOKEN=${MCP_TOKEN}
+    restart: unless-stopped 
