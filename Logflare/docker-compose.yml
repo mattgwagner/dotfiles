@@ -1,0 +1,34 @@
+services:
+  db:
+    image: postgres:13.4-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: logflare_docker
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  logflare:
+    image: supabase/logflare:latest
+    ports:
+      - "4000:4000"
+    hostname: 127.0.0.1
+    environment:
+      - DB_DATABASE=logflare_docker
+      - DB_HOSTNAME=db
+      - DB_PORT=5432
+      - DB_PASSWORD=postgres
+      - DB_USERNAME=postgres
+      - LOGFLARE_SINGLE_TENANT=true
+      - LOGFLARE_PUBLIC_ACCESS_TOKEN=logflare_public_token_123
+      - LOGFLARE_PRIVATE_ACCESS_TOKEN=logflare_private_token_456
+      - POSTGRES_BACKEND_URL=postgresql://postgres:postgres@db:5432/logflare_docker
+      - POSTGRES_BACKEND_SCHEMA=public
+      - LOGFLARE_DB_ENCRYPTION_KEY=/SK3XqyRbFeI9Uzs8yryHBpG9tbE3VJizSoPsbDxCgw=
+    depends_on:
+      - db
+
+volumes:
+  pg-data:

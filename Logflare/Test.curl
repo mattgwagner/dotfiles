@@ -1,0 +1,27 @@
+curl -X "POST" "http://localhost:4000/logs?source=5c75e012-2ff6-4898-9629-a99d89984415" \
+    -H 'Content-Type: application/json' \
+    -H 'X-API-KEY: logflare_public_token_123' \
+    -d $'{
+      "event_message": "This is another log message.",
+      "metadata": {
+        "ip_address": "100.100.100.100",
+        "request_method": "POST",
+        "custom_user_data": {
+          "vip": true,
+          "id": 38,
+          "login_count": 154,
+          "company": "Apple",
+          "address": {
+            "zip": "11111",
+            "st": "NY",
+            "street": "123 W Main St",
+            "city": "New York"
+          }
+        },
+        "datacenter": "aws",
+        "request_headers": {
+          "connection": "close",
+          "user_agent": "chrome"
+        }
+      }
+    }'
