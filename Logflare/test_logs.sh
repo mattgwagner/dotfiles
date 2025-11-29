@@ -5,7 +5,7 @@
 
 BASE_URL="https://logs.redleg.app/api/logs"
 API_KEY="logflare_public_token_123"
-SOURCE_ID="92b5eafb-90b3-494d-943c-2918e3cf0fcc"
+SOURCE="69407f6e-0e20-4166-a72d-99bfbba2a1ff"
 
 # Arrays for random data generation
 EVENT_MESSAGES=(
