@@ -3,9 +3,7 @@
 # Logflare Test Script - Generates 50 variations of test logs
 # This script sends 50 different log entries to test Logflare's search functionality
 
-BASE_URL="https://logs.redleg.app/api"
-API_KEY="logflare_public_token_123"
-SOURCE_ID="5c75e012-2ff6-4898-9629-a99d89984415"
+BASE_URL="https://logs.redleg.app/api/logs"
 
 # Arrays for random data generation
 EVENT_MESSAGES=(
