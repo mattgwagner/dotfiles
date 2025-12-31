@@ -9,9 +9,9 @@ services:
     environment:
       - SECRET_KEY_BASE=abcdefabcdef
       - TLS_DOMAIN=fizzy.example.com
-      - BASE_URL=https://fizzy.example.com
-      - MAILER_FROM_ADDRESS=fizzy@example.com
-      - SMTP_ADDRESS=mail.example.com
+      - BASE_URL=https://fizzy.redleg.dev
+      - MAILER_FROM_ADDRESS=fizzy@redleg.dev
+      - SMTP_ADDRESS=mailpit.redleg.dev
       - SMTP_USERNAME=user
       - SMTP_PASSWORD=pass
       - VAPID_PRIVATE_KEY=myvapidprivatekey
