@@ -1,5 +1,5 @@
 services:
-  cloudflared:
+  cloudflared_v2:
     image: cloudflare/cloudflared:latest
     container_name: cloudflare-tunnel
     restart: unless-stopped
