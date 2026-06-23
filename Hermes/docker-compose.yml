@@ -28,7 +28,7 @@
 #
 services:
   gateway:
-    image: ghcr.io/nousresearch/hermes-agent:latest
+    image: nousresearch/hermes-agent:latest
     container_name: hermes
     restart: unless-stopped
     network_mode: host
@@ -60,7 +60,7 @@ services:
     command: ["gateway", "run"]
 
   dashboard:
-    image: ghcr.io/nousresearch/hermes-agent:latest
+    image: nousresearch/hermes-agent:latest
     container_name: hermes-dashboard
     restart: unless-stopped
     network_mode: host
