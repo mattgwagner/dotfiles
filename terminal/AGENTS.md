@@ -21,15 +21,19 @@ new entry to `"Profiles"`:
   "Guid": "<run `uuidgen`, paste result, never reuse or change it later>",
   "Dynamic Profile Parent Name": "Default",
   "Custom Command": "Custom Shell",
-  "Command": "ssh -t mini \"tmux new -A -s <project>\"",
+  "Command": "zsh -ic 'mssh <project>; [ $? -ne 0 ] && { echo; echo \"mssh failed — see error above\"; sleep 300; }'",
+  "Close Sessions On End": false,
   "Tags": ["mini"],
   "Badge Text": "<project>"
 }
 ```
 
-Swap `mini` for `mini-remote` (and adjust the Guid/Name/Command) if you want
-an away-from-home variant too — see the existing `mini-remote: main` entry
-for the pattern.
+Routing through `mssh` (not raw `ssh -t`) means the profile inherits its
+mini/mini-remote auto-fallback — no separate away-from-home profile needed
+per project. `Close Sessions On End: false` + the failure trap keep the tab
+open with the error visible instead of silently closing, which is what
+made the first version of these profiles look broken. Force a specific
+host only if you need to, e.g. `mssh <project> mini-remote`.
 
 Save the file. iTerm watches `~/Library/Application Support/iTerm2/DynamicProfiles/`
 and reloads automatically (that's a symlink to this file — no bootstrap
