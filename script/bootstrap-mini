@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#
+# Installs the mini-side half of the tmux setup:
+#   - symlinks terminal/tmux.conf -> ~/.tmux.conf
+#   - sources zsh/ssh-tmux.zsh (auto-attach on SSH login) from ~/.zshrc
+#   - installs TPM (tmux plugin manager) if missing, needed for resurrect/continuum
+#
+# Run this ON the mini (not the Mac). Safe to re-run.
+
+set -e
+cd "$(dirname "$0")/.."
+DOTFILES_ROOT=$(pwd -P)
+source script/lib.sh
+
+link_file "$DOTFILES_ROOT/terminal/tmux.conf" "$HOME/.tmux.conf"
+ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/ssh-tmux.zsh"
+
+TPM_DIR="$HOME/.tmux/plugins/tpm"
+if [ ! -d "$TPM_DIR" ]; then
+  info "installing tmux plugin manager (tpm)"
+  git clone --depth 1 https://github.com/tmux-plugins/tpm "$TPM_DIR"
+  success "tpm installed"
+else
+  success "tpm already installed"
+fi
+
+echo ""
+echo "  Mini side done. Reload tmux config with prefix + r, or: tmux source ~/.tmux.conf"
+echo "  First time: prefix + I inside tmux to have tpm fetch resurrect/continuum."
+echo "  New SSH logins will now auto-attach to the 'main' tmux session."

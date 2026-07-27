@@ -1,0 +1,22 @@
+{
+  "Profiles": [
+    {
+      "Name": "mini: main",
+      "Guid": "9864C99B-B81D-412C-BB2D-7C9B899E2B24",
+      "Dynamic Profile Parent Name": "Default",
+      "Custom Command": "Custom Shell",
+      "Command": "ssh -t mini \"tmux new -A -s main\"",
+      "Tags": ["mini"],
+      "Badge Text": "main"
+    },
+    {
+      "Name": "mini-remote: main",
+      "Guid": "0A128912-3B4A-470D-A43E-25DDD0199E95",
+      "Dynamic Profile Parent Name": "Default",
+      "Custom Command": "Custom Shell",
+      "Command": "ssh -t mini-remote \"tmux new -A -s main\"",
+      "Tags": ["mini-remote"],
+      "Badge Text": "main (remote)"
+    }
+  ]
+}
