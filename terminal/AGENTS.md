@@ -20,20 +20,28 @@ new entry to `"Profiles"`:
   "Name": "mini: <project>",
   "Guid": "<run `uuidgen`, paste result, never reuse or change it later>",
   "Dynamic Profile Parent Name": "Default",
-  "Custom Command": "Custom Shell",
-  "Command": "zsh -ic 'mssh <project>; [ $? -ne 0 ] && { echo; echo \"mssh failed — see error above\"; sleep 300; }'",
+  "Custom Command": "SSH",
+  "Command": "mini",
+  "Initial Text": "tmux new -A -s <project>",
   "Close Sessions On End": false,
   "Tags": ["mini"],
   "Badge Text": "<project>"
 }
 ```
 
-Routing through `mssh` (not raw `ssh -t`) means the profile inherits its
-mini/mini-remote auto-fallback — no separate away-from-home profile needed
-per project. `Close Sessions On End: false` + the failure trap keep the tab
-open with the error visible instead of silently closing, which is what
-made the first version of these profiles look broken. Force a specific
-host only if you need to, e.g. `mssh <project> mini-remote`.
+`Custom Command: "SSH"` is iTerm's native SSH integration (the same
+mechanism the existing "Andy" profile uses) — `Command` is just the SSH
+host alias, and `Initial Text` is typed into the shell right after connect.
+This is NOT the same as `Custom Command: "Yes"`/`"Custom Shell"` (arbitrary
+command / custom shell binary) — those silently fall through to a plain
+local shell on this iTerm version instead of erroring, which is what made
+the first version of these profiles look broken. Stick to native SSH mode.
+
+Copy the block again with `Command: "mini-remote"` for an away-from-home
+variant — see the existing `mini-remote: main` entry. Native SSH profiles
+target one host each; there's no `mssh`-style auto-fallback at this layer
+(that's what the `mssh` shell function is for — use it directly when you
+don't want to keep two profiles per project).
 
 Save the file. iTerm watches `~/Library/Application Support/iTerm2/DynamicProfiles/`
 and reloads automatically (that's a symlink to this file — no bootstrap

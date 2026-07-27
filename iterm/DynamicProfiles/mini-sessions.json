@@ -4,8 +4,9 @@
       "Name": "mini: main",
       "Guid": "9864C99B-B81D-412C-BB2D-7C9B899E2B24",
       "Dynamic Profile Parent Name": "Default",
-      "Custom Command": "Custom Shell",
-      "Command": "zsh -ic 'mssh main; [ $? -ne 0 ] && { echo; echo \"mssh failed — see error above\"; sleep 300; }'",
+      "Custom Command": "SSH",
+      "Command": "mini",
+      "Initial Text": "tmux new -A -s main",
       "Close Sessions On End": false,
       "Tags": ["mini"],
       "Badge Text": "main"
@@ -14,8 +15,9 @@
       "Name": "mini-remote: main",
       "Guid": "0A128912-3B4A-470D-A43E-25DDD0199E95",
       "Dynamic Profile Parent Name": "Default",
-      "Custom Command": "Custom Shell",
-      "Command": "zsh -ic 'mssh main mini-remote; [ $? -ne 0 ] && { echo; echo \"mssh failed — see error above\"; sleep 300; }'",
+      "Custom Command": "SSH",
+      "Command": "mini-remote",
+      "Initial Text": "tmux new -A -s main",
       "Close Sessions On End": false,
       "Tags": ["mini-remote"],
       "Badge Text": "main (remote)"
