@@ -16,3 +16,23 @@ mssh() {
 }
 
 alias yolo='claude --dangerously-skip-permissions --chrome'
+
+# List (or otherwise operate on) tmux sessions on the mini.
+# Usage: mtux ls [host]   -> list sessions
+#        mtux <session>   -> shorthand for mssh <session>
+mtux() {
+  local cmd="${1:?usage: mtux ls|<session-name> [host]}"
+  local host="$2"
+  if [[ -z "$host" ]]; then
+    if ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini true 2>/dev/null; then
+      host=mini
+    else
+      host=mini-remote
+    fi
+  fi
+  if [[ "$cmd" == "ls" ]]; then
+    ssh -o ConnectTimeout=3 "$host" "tmux ls" 2>/dev/null
+  else
+    mssh "$cmd" "$host"
+  fi
+}
