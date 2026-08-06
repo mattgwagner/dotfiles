@@ -4,6 +4,28 @@ See also [https://dotfiles.github.io/]
 
 A personal grab bag of dev tools, references, and helper scripts that I like to have on any development environment I fire up.
 
+## Shell environment (any Mac)
+
+```sh
+git clone https://github.com/mattgwagner/dotfiles.git ~/.dotfiles
+~/.dotfiles/script/bootstrap-shell
+```
+
+Installs `zsh/env.zsh` (Homebrew, nvm, uv, bun, opencode, Docker completions,
+iTerm integration), `zsh/aliases.zsh` (`mssh`, `yolo`), and `zsh/foundry.zsh`
+(Claude Code Azure Foundry subscription switching).
+
+Everything in `zsh/env.zsh` is guarded on the target existing, so one file
+works on both an Apple Silicon laptop (`/opt/homebrew`) and the Intel mini
+(`/usr/local`). Anything added there must avoid hardcoded `/Users/<name>`
+paths and unguarded `source` — that combination is what produced login errors
+when this config was copied between machines.
+
+Secrets and per-machine values go in `~/.zshrc.local`, which the script
+creates as a stub and which is never committed. `use-incontext-foundry` /
+`use-sittadel-foundry` read their API keys from there and refuse to switch
+if the key is missing.
+
 ## tmux + iTerm remote sessions (mini / mini-remote)
 
 Persistent, resumable named sessions on the Mac mini, reachable from iTerm on
@@ -27,6 +49,7 @@ What each installs:
 
 | Script | Installs |
 |---|---|
+| `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), `~/.zshrc.local` stub |
 | `script/bootstrap-mac` | `mssh <session> [host]` shell function (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
 | `script/bootstrap-mini` | `~/.tmux.conf` (`terminal/tmux.conf`); auto-attach-on-SSH-login (`zsh/ssh-tmux.zsh`); tmux plugin manager + resurrect/continuum for reboot survival |
 

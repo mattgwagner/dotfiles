@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#
+# Installs the machine-agnostic shell environment on any Mac:
+#   - zsh/env.zsh     (Homebrew, nvm, uv, bun, opencode, docker completions, iTerm)
+#   - zsh/aliases.zsh (mssh, yolo)
+#   - zsh/foundry.zsh (Claude Code Azure Foundry subscription switching)
+#
+# Run this before bootstrap-mac / bootstrap-mini. Safe to re-run — it only
+# appends guarded source lines to ~/.zshrc, never overwrites it.
+#
+# Secrets (Foundry API keys, per-machine overrides) go in ~/.zshrc.local,
+# which this script creates as a stub and which is never committed.
+
+set -e
+cd "$(dirname "$0")/.."
+DOTFILES_ROOT=$(pwd -P)
+source script/lib.sh
+
+ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/env.zsh"
+ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/aliases.zsh"
+
+# ~/.zshrc.local must be sourced BEFORE foundry.zsh, which reads the keys from it.
+if [ ! -f "$HOME/.zshrc.local" ]; then
+  cat > "$HOME/.zshrc.local" <<'EOF'
+# Machine-specific settings and secrets. Never committed.
+#
+# export INCONTEXT_FOUNDRY_API_KEY=...
+# export SITTADEL_FOUNDRY_API_KEY=...
+EOF
+  success "created ~/.zshrc.local stub"
+else
+  success "~/.zshrc.local already exists"
+fi
+
+ensure_sourced "$HOME/.zshrc" "$HOME/.zshrc.local"
+ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/foundry.zsh"
+
+echo ""
+echo "  Shell environment installed. Open a new tab or: source ~/.zshrc"
+echo "  Put Foundry API keys in ~/.zshrc.local to enable use-*-foundry."

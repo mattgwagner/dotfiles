@@ -14,3 +14,5 @@ mssh() {
   fi
   ssh -t "$host" "tmux new -A -s '$session'"
 }
+
+alias yolo='claude --dangerously-skip-permissions --chrome'
