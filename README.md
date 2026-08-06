@@ -12,7 +12,7 @@ git clone https://github.com/mattgwagner/dotfiles.git ~/.dotfiles
 ```
 
 Installs `zsh/env.zsh` (Homebrew, nvm, uv, bun, opencode, Docker completions,
-iTerm integration), `zsh/aliases.zsh` (`mssh`, `yolo`), and `zsh/foundry.zsh`
+iTerm integration), `zsh/aliases.zsh` (`mssh`, `mkill`, `yolo`), and `zsh/foundry.zsh`
 (Claude Code Azure Foundry subscription switching).
 
 Everything in `zsh/env.zsh` is guarded on the target existing, so one file
@@ -59,3 +59,11 @@ they never overwrite an existing file.
 Use it via iTerm profile picker (Cmd+O, fuzzy-search "mini: ...") or from any
 shell: `mssh <project>`. See [`terminal/AGENTS.md`](terminal/AGENTS.md) for
 how to add a new project's session/profile.
+
+To tear one down, `mkill` (no argument) kills the session you're currently in,
+which also drops the SSH connection that `mssh` opened — one step back to the
+laptop. `mkill <session>` kills a named session from anywhere. Either form
+lists any non-shell processes still running in the session and asks before
+killing, so an attached Claude Code or dev server isn't dropped by accident.
+Note that idle sessions cost almost nothing; this is for reclaiming what's
+*running inside* them.

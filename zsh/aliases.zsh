@@ -15,6 +15,39 @@ mssh() {
   ssh -t "$host" "tmux new -A -s '$session'"
 }
 
+# Tear down the tmux session you're sitting in (the counterpart to mssh).
+# Killing the current session drops the attached client, so an `mssh` shell
+# exits back to your laptop in one step.
+# Usage: mkill [session-name]
+#   mkill                -> kills the current session
+#   mkill readerful      -> kills a named session from anywhere
+mkill() {
+  local session="$1"
+  if [[ -z "$session" ]]; then
+    if [[ -z "$TMUX" ]]; then
+      print -u2 "mkill: not inside tmux; pass a session name"
+      return 1
+    fi
+    session="$(tmux display-message -p '#S')"
+  elif ! tmux has-session -t "=$session" 2>/dev/null; then
+    print -u2 "mkill: no such session: $session"
+    return 1
+  fi
+
+  # Warn about anything heavier than the session's login shells before nuking it.
+  local -a procs
+  procs=("${(@f)$(tmux list-panes -s -t "=$session" -F '#{pane_pid}' 2>/dev/null \
+    | xargs -I{} pgrep -P {} 2>/dev/null \
+    | xargs -I{} ps -o comm= -p {} 2>/dev/null)}")
+  if (( ${#procs[@]} )) && [[ -n "$procs[1]" ]]; then
+    print "mkill: '$session' is running: ${procs[*]:t}"
+    read -q "?Kill it anyway? [y/N] " || { print; return 1 }
+    print
+  fi
+
+  tmux kill-session -t "=$session"
+}
+
 alias yolo='claude --dangerously-skip-permissions --chrome'
 
 # List (or otherwise operate on) tmux sessions on the mini.

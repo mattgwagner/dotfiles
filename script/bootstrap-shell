@@ -2,7 +2,7 @@
 #
 # Installs the machine-agnostic shell environment on any Mac:
 #   - zsh/env.zsh     (Homebrew, nvm, uv, bun, opencode, docker completions, iTerm)
-#   - zsh/aliases.zsh (mssh, yolo)
+#   - zsh/aliases.zsh (mssh, mkill, yolo)
 #   - zsh/foundry.zsh (Claude Code Azure Foundry subscription switching)
 #
 # Run this before bootstrap-mac / bootstrap-mini. Safe to re-run — it only
