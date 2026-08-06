@@ -22,6 +22,7 @@ use-incontext-foundry() {
     export ANTHROPIC_FOUNDRY_RESOURCE=incontext-azure-foundry-eastus2
     export AZURE_RESOURCE_NAME=incontext-azure-foundry-eastus2
     export ENABLE_PROMPT_CACHING_1H=1
+    export CLAUDE_CODE_ENABLE_AUTO_MODE=1
     echo "Switched to InContext Azure Foundry subscription"
 }
 
@@ -38,6 +39,7 @@ use-sittadel-foundry() {
     export ANTHROPIC_FOUNDRY_RESOURCE=foundry-sittadel-prod
     export AZURE_RESOURCE_NAME=foundry-sittadel-prod
     export ENABLE_PROMPT_CACHING_1H=1
+    export CLAUDE_CODE_ENABLE_AUTO_MODE=1
     echo "Switched to Sittadel Azure Foundry subscription"
 }
 
