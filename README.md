@@ -12,8 +12,10 @@ git clone https://github.com/mattgwagner/dotfiles.git ~/.dotfiles
 ```
 
 Installs `zsh/env.zsh` (Homebrew, nvm, uv, bun, opencode, Docker completions,
-iTerm integration), `zsh/aliases.zsh` (`mssh`, `mkill`, `yolo`), and `zsh/foundry.zsh`
-(Claude Code Azure Foundry subscription switching).
+iTerm integration), `zsh/aliases.zsh` (`mssh`, `mtux`, `mkill`, `yolo`),
+`zsh/foundry.zsh` (Claude Code Azure Foundry subscription switching), and
+`zsh/motd.zsh` (startup banner listing the above plus live mini/foundry/tmux
+status, shown on every new interactive shell).
 
 Everything in `zsh/env.zsh` is guarded on the target existing, so one file
 works on both an Apple Silicon laptop (`/opt/homebrew`) and the Intel mini
@@ -49,7 +51,7 @@ What each installs:
 
 | Script | Installs |
 |---|---|
-| `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), `~/.zshrc.local` stub |
+| `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), startup banner (`zsh/motd.zsh`), `~/.zshrc.local` stub |
 | `script/bootstrap-mac` | `mssh <session> [host]` shell function (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
 | `script/bootstrap-mini` | `~/.tmux.conf` (`terminal/tmux.conf`); auto-attach-on-SSH-login (`zsh/ssh-tmux.zsh`); tmux plugin manager + resurrect/continuum for reboot survival |
 
