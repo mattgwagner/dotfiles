@@ -1,6 +1,7 @@
 # Startup banner — key custom commands + live context, shown on every new
-# interactive shell. Mac-only (sourced from env.zsh); the mini has its own
-# tmux auto-attach in ssh-tmux.zsh instead.
+# interactive shell on any Mac (laptop or mini). On the mini, this is sourced
+# right before ssh-tmux.zsh's auto-attach, so it shows once on SSH login and
+# again per new tmux pane/window (each spawns its own shell).
 #
 # The command table below is static text, not derived from aliases.zsh —
 # update it by hand when adding/removing a command there.
@@ -13,7 +14,9 @@ _motd() {
   reset=$(tput sgr0 2>/dev/null)
 
   local mini_status
-  if ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini true 2>/dev/null; then
+  if [[ "$(hostname -s)" == Matts-Mac-mini* ]]; then
+    mini_status="local (you're on it)"
+  elif ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini true 2>/dev/null; then
     mini_status="reachable (LAN)"
   elif ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini-remote true 2>/dev/null; then
     mini_status="away — use mini-remote"
