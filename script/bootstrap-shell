@@ -4,6 +4,7 @@
 #   - zsh/env.zsh     (Homebrew, nvm, uv, bun, opencode, docker completions, iTerm)
 #   - zsh/aliases.zsh (mssh, mkill, yolo)
 #   - zsh/foundry.zsh (Claude Code Azure Foundry subscription switching)
+#   - zsh/motd.zsh    (startup banner — commands + live context)
 #
 # Run this before bootstrap-mac / bootstrap-mini. Safe to re-run — it only
 # appends guarded source lines to ~/.zshrc, never overwrites it.
@@ -34,6 +35,9 @@ fi
 
 ensure_sourced "$HOME/.zshrc" "$HOME/.zshrc.local"
 ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/foundry.zsh"
+
+# motd.zsh reads $CLAUDE_CODE_USE_FOUNDRY, so it must load after foundry.zsh.
+ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/motd.zsh"
 
 echo ""
 echo "  Shell environment installed. Open a new tab or: source ~/.zshrc"
