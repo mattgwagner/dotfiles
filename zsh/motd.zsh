@@ -5,8 +5,32 @@
 #
 # The command table below is static text, not derived from aliases.zsh —
 # update it by hand when adding/removing a command there.
+#
+# Mini reachability is read from a cache file, never probed live here: `ssh
+# mini` resolves `matts-mac-mini.local` via mDNS, and ConnectTimeout does NOT
+# bound that resolution step — off the mini's LAN it can hang 5s+ before
+# falling through to mini-remote, making every new shell pay that cost.
+# _motd_refresh_mini_status runs the real probe in a detached background job
+# and writes the result for the *next* shell to read instantly.
 
 [[ -o interactive ]] || return
+
+_MOTD_MINI_CACHE="${TMPDIR:-/tmp}/dotfiles-mini-status.$UID"
+_MOTD_MINI_CACHE_TTL=120 # seconds
+
+_motd_refresh_mini_status() {
+  (
+    local reach
+    if ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini true 2>/dev/null; then
+      reach="reachable (LAN)"
+    elif ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini-remote true 2>/dev/null; then
+      reach="away — use mini-remote"
+    else
+      reach="unreachable"
+    fi
+    print -r -- "$reach" > "$_MOTD_MINI_CACHE"
+  ) &!
+}
 
 _motd() {
   local dim reset
@@ -16,21 +40,18 @@ _motd() {
   local mini_status
   if [[ "$(hostname -s)" == Matts-Mac-mini* ]]; then
     mini_status="local (you're on it)"
-  elif ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini true 2>/dev/null; then
-    mini_status="reachable (LAN)"
-  elif ssh -o ConnectTimeout=2 -o ConnectionAttempts=1 -o BatchMode=yes mini-remote true 2>/dev/null; then
-    mini_status="away — use mini-remote"
   else
-    mini_status="unreachable"
-  fi
-
-  local foundry_status="default"
-  if [[ "$CLAUDE_CODE_USE_FOUNDRY" == "1" ]]; then
-    case "$ANTHROPIC_FOUNDRY_RESOURCE" in
-      incontext-azure-foundry-eastus2) foundry_status="incontext" ;;
-      foundry-sittadel-prod) foundry_status="sittadel" ;;
-      *) foundry_status="$ANTHROPIC_FOUNDRY_RESOURCE" ;;
-    esac
+    local cache_age=-1
+    [[ -f "$_MOTD_MINI_CACHE" ]] && cache_age=$(( $(date +%s) - $(date -r "$_MOTD_MINI_CACHE" +%s) ))
+    if (( cache_age >= 0 && cache_age < _MOTD_MINI_CACHE_TTL )); then
+      mini_status="$(<$_MOTD_MINI_CACHE)"
+    else
+      # Stale or missing — show what we can and kick a refresh for the next
+      # shell. Only spawn the probe when actually stale, so opening a bunch
+      # of tmux panes back-to-back doesn't fire a redundant ssh per pane.
+      mini_status="checking… (next shell will show it)"
+      _motd_refresh_mini_status
+    fi
   fi
 
   local tmux_status="not active"
@@ -46,7 +67,6 @@ _motd() {
 │ use-sittadel-foundry      switch to Sittadel Azure Foundry
 ├─────────────────────────────────────────────────────────
 │ ${dim}mini:    ${mini_status}
-│ foundry: ${foundry_status}
 │ tmux:    ${tmux_status}${reset}
 └─────────────────────────────────────────────────────────
 EOF
@@ -54,3 +74,5 @@ EOF
 
 _motd
 unset -f _motd
+# _motd_refresh_mini_status stays defined — the backgrounded subshell that
+# calls it (&!) needs it to still exist when it actually runs.
