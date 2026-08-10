@@ -18,7 +18,7 @@ use-incontext-foundry() {
     export ANTHROPIC_FOUNDRY_API_KEY="$INCONTEXT_FOUNDRY_API_KEY"
     export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5"
     export ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4-5"
-    export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-4-8"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5"
     export ANTHROPIC_FOUNDRY_RESOURCE=incontext-azure-foundry-eastus2
     export AZURE_RESOURCE_NAME=incontext-azure-foundry-eastus2
     export ENABLE_PROMPT_CACHING_1H=1
