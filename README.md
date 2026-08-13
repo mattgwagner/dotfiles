@@ -69,3 +69,34 @@ lists any non-shell processes still running in the session and asks before
 killing, so an attached Claude Code or dev server isn't dropped by accident.
 Note that idle sessions cost almost nothing; this is for reclaiming what's
 *running inside* them.
+
+### tmux keybindings (`terminal/tmux.conf`)
+
+Prefix is **`Ctrl+a`** (not tmux's factory default `Ctrl+b` — see note below).
+
+| Keys | Action |
+|---|---|
+| `Ctrl+a` `\|` or `Ctrl+a` `\` | Split horizontally (new pane inherits cwd) |
+| `Ctrl+a` `-` | Split vertically (new pane inherits cwd) |
+| `Ctrl+a` `c` | New window (inherits cwd) |
+| `Ctrl+a` `h`/`j`/`k`/`l` | Move between panes (repeatable — hold prefix, tap again) |
+| `Ctrl+a` `s` | Session/window tree picker |
+| `Ctrl+a` `N` | Prompt for a new session name |
+| `Ctrl+a` `K` | Kill current session (confirms first) |
+| `Ctrl+a` `r` | Reload `~/.tmux.conf` |
+| `Ctrl+Left` / `Ctrl+Right` | Previous/next window (no prefix) |
+| `Alt+←↑↓→` | Resize pane (no prefix) — requires iTerm profile's Option key set to "Esc+", else Alt just types literal characters |
+
+Sessions started via `mssh` survive mini reboots (`tmux-resurrect` +
+`tmux-continuum`, auto-restore on).
+
+**If the prefix key seems to do nothing:** this bit us once and the root
+cause was never fully pinned down — `Ctrl+b` (tmux's actual factory default)
+stopped reaching the terminal on one machine while every other Ctrl
+combo (including `Ctrl+c`) worked fine, on both a remote tmux session and a
+zero-config local one. The bytes were confirmed reaching the terminal (`cat -v`
+echoed `^B` correctly) — tmux itself just never saw them as the prefix.
+Switching the prefix to `Ctrl+a` fixed it. If it recurs on a new machine:
+confirm you're actually inside a tmux client (`echo $TMUX`), confirm the
+live prefix (`tmux show-options -g prefix`), then just try a different
+prefix key rather than chasing the root cause further.
