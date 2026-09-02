@@ -22,8 +22,12 @@ use-incontext-foundry() {
     fi
     export CLAUDE_CODE_USE_FOUNDRY=1
     export ANTHROPIC_FOUNDRY_BASE_URL="https://incontext-azure-foundry-aigateway.azure-api.net/incontext-azure-foundry-eastus2/anthropic"
-    export ANTHROPIC_API_KEY="$INCONTEXT_FOUNDRY_API_KEY"
-    unset ANTHROPIC_FOUNDRY_API_KEY
+    # Claude Code's Foundry client reads ANTHROPIC_FOUNDRY_API_KEY specifically
+    # (not ANTHROPIC_API_KEY) — confirmed against CLI 2.1.258. Setting the
+    # wrong var here means no x-api-key header goes out at all, which APIM
+    # reports as "missing subscription key" (not "invalid").
+    export ANTHROPIC_FOUNDRY_API_KEY="$INCONTEXT_FOUNDRY_API_KEY"
+    unset ANTHROPIC_API_KEY
     unset ANTHROPIC_FOUNDRY_RESOURCE
     unset AZURE_RESOURCE_NAME
     export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5"
