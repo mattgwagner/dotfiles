@@ -13,9 +13,10 @@ git clone https://github.com/mattgwagner/dotfiles.git ~/.dotfiles
 
 Installs `zsh/env.zsh` (Homebrew, nvm, uv, bun, opencode, Docker completions,
 iTerm integration), `zsh/aliases.zsh` (`hmini`, `hls`, `hkill`, `yolo`),
-`zsh/foundry.zsh` (Claude Code Azure Foundry subscription switching), and
+`zsh/foundry.zsh` (Claude Code Azure Foundry subscription switching),
 `zsh/motd.zsh` (startup banner listing the above plus live mini/foundry/herdr
-status, shown on every new interactive shell).
+status, shown on every new interactive shell), and — if Herdr is installed —
+`terminal/herdr.toml` symlinked to `~/.config/herdr/config.toml`.
 
 Everything in `zsh/env.zsh` is guarded on the target existing, so one file
 works on both an Apple Silicon laptop (`/opt/homebrew`) and the Intel mini
@@ -48,14 +49,14 @@ script/bootstrap-mac
 ```
 
 There is no longer a mini-side bootstrap script — Herdr's own installer
-(`herdr update`) handles the server, and its config lives in
-`~/.config/herdr/config.toml` on the mini, not in this repo.
+(`herdr update`) handles the server binary, and `script/bootstrap-shell`
+symlinks its config, so the same one command covers both machines.
 
 What each installs:
 
 | Script | Installs |
 |---|---|
-| `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), startup banner (`zsh/motd.zsh`), `~/.zshrc.local` stub |
+| `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), startup banner (`zsh/motd.zsh`), `~/.zshrc.local` stub, Herdr config (`terminal/herdr.toml`) |
 | `script/bootstrap-mac` | `hmini` / `hls` / `hkill` shell functions (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
 
 Both scripts only append guarded `source` lines to `~/.zshrc` and symlink —
@@ -80,12 +81,67 @@ project's session/profile).
 Idle sessions cost almost nothing — `hkill` is for reclaiming what's *running
 inside* one, not for tidying up the list.
 
-### Keybindings
+### Herdr config + keybindings (`terminal/herdr.toml`)
 
-Herdr's keybindings are its own, configured in `~/.config/herdr/config.toml`
-on whichever machine runs the client — not in this repo. See
-<https://herdr.dev> or `herdr --help`. `herdr config reset-keys` backs up the
-config and drops any customizations if a binding gets wedged.
+Symlinked to `~/.config/herdr/config.toml` by `script/bootstrap-shell`, so
+one tracked file covers every machine. Apply an edit without restarting:
+`herdr server reload-config` (reports validation diagnostics). Full list of
+available settings: `herdr --default-config`. For a machine-specific
+override, point `HERDR_CONFIG_PATH` at a different file rather than editing
+the tracked one.
+
+Prefix is **`Ctrl+a`**, not Herdr's default `Ctrl+b` — same choice the old
+tmux config made, so the muscle memory carries over, and it avoids the
+never-root-caused problem (see below) where `Ctrl+b` stopped reaching the
+terminal.
+
+| Keys | Action |
+|---|---|
+| `Ctrl+1`…`Ctrl+9` | Switch tab (no prefix — the closest thing to iTerm's `Cmd+1..9`) |
+| `Ctrl+Alt+n` / `Ctrl+Alt+p` | Next / previous tab (no prefix) |
+| `Ctrl+a` `v` / `Ctrl+a` `-` | Split vertical / horizontal |
+| `Ctrl+a` `h`/`j`/`k`/`l` | Move between panes |
+| `Ctrl+a` `c` | New tab |
+| `Ctrl+a` `w` | Workspace picker |
+| `Ctrl+a` `z` | Zoom pane |
+| `Ctrl+a` `q` | Detach |
+| `Ctrl+a` `?` | Help — the full live keymap |
+
+**Two things worth knowing about the bindings:**
+
+`Cmd` chords can never reach Herdr. macOS terminals swallow them; they're
+never sent to the running program as key bytes. Herdr's own config notes
+that `ctrl+letter` and function keys are the reliable direct bindings. This
+isn't an iTerm limitation — no terminal fixes it, because iTerm's splits and
+Herdr's splits are different objects anyway (an iTerm split gives you a bare
+local shell, not a Herdr pane).
+
+`Ctrl+Alt+…` requires iTerm's Left Option key set to **"Esc+"** (Profiles >
+Keys). Without it, Alt types literal characters and those bindings are dead.
+
+`ctrl+1..9` uses the `[keys.indexed]` block, which Herdr documents as a
+legacy compatibility path — but it's the only documented way to get *direct,
+prefix-free* number switching. Revisit if a future Herdr version drops it.
+
+If a binding gets wedged, `herdr config reset-keys` backs up the config and
+drops customizations.
+
+### If the prefix key seems to do nothing
+
+Carried forward from the tmux config, because the root cause was never
+pinned down and it's a terminal-level problem, not a multiplexer one — it
+can bite Herdr the same way.
+
+`Ctrl+b` (tmux's factory default, and Herdr's) once stopped reaching the
+terminal on one machine while every other Ctrl combo, including `Ctrl+c`,
+worked fine — on both a remote session and a zero-config local one. The
+bytes were confirmed arriving at the terminal (`cat -v` echoed `^B`
+correctly); the multiplexer just never saw them as the prefix. Switching to
+`Ctrl+a` fixed it.
+
+If it recurs: confirm you're actually inside a Herdr client (`echo
+$HERDR_ENV`), check the live prefix in `terminal/herdr.toml`, then just try
+a different prefix key rather than chasing the root cause further.
 
 ### Note on the tmux era
 

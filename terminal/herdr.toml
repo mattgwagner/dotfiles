@@ -1,0 +1,35 @@
+# Herdr configuration — install to ~/.config/herdr/config.toml via
+# script/bootstrap-shell. Shared by every machine that runs Herdr (laptop and
+# mini both). For a machine-specific override, point HERDR_CONFIG_PATH at a
+# different file rather than editing this one.
+#
+# Reload without restarting: herdr server reload-config
+# See all available settings: herdr --default-config
+
+[terminal]
+# New panes, tabs, and workspaces start in $HOME instead of inheriting the source cwd.
+new_cwd = "home"
+
+[keys]
+# ctrl+a, not Herdr's default ctrl+b: matches the old tmux config's muscle
+# memory, and sidesteps the never-root-caused issue where ctrl+b stopped
+# reaching the terminal on one machine (documented in ~/.dotfiles/README.md
+# history). prefix+a sends a literal ctrl+a through to readline.
+prefix = "ctrl+a"
+
+# Direct (no-prefix) bindings for the things hit constantly. ctrl+letter is
+# what Herdr documents as most reliable across terminals — cmd never reaches
+# a TUI at all, and alt needs iTerm's Left Option set to "Esc+".
+next_tab = "ctrl+alt+n"
+previous_tab = "ctrl+alt+p"
+
+# Splits and pane navigation stay on the prefix — vim-shaped, same as tmux,
+# and not worth burning scarce direct ctrl chords on.
+
+[keys.indexed]
+# ctrl+1..9 switches tabs with no prefix — the closest analogue to iTerm's
+# cmd+1..9, which a TUI can never receive.
+tabs = "ctrl"
+
+[ui]
+show_agent_labels_on_pane_borders = false
