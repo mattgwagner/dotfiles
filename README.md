@@ -76,10 +76,19 @@ workspace inside it** — `prefix+shift+n` to create (it prompts for a name),
 lives in this repo, so adding a project needs no change here and no bootstrap
 re-run.
 
-`work` uses Herdr's `--remote` client/server attach; the iTerm profiles
-instead SSH in and run `herdr` on the mini. See
-[`terminal/AGENTS.md`](terminal/AGENTS.md) for why, and for the rules on
-editing the profiles.
+`work` uses Herdr's `--remote` client/server attach with
+`--remote-keybindings server`; the iTerm profiles instead SSH in and run
+`herdr` on the mini. See [`terminal/AGENTS.md`](terminal/AGENTS.md) for why,
+and for the rules on editing the profiles.
+
+**Why pin the keybindings to the server:** Herdr's `--remote` defaults to
+`local`, reading the keymap from the *client* machine. A laptop whose
+`~/.config/herdr/config.toml` is missing or stock then attaches with Herdr's
+default `Ctrl+b` prefix instead of `Ctrl+a` — and the symptom (a prefix key
+that does nothing) looks exactly like the terminal swallowing the keystroke,
+which sends you hunting in iTerm preferences. The mini owns the session, so
+it owns the keymap. `script/bootstrap-shell` still symlinks the config on
+every machine, for when Herdr runs locally rather than as a remote client.
 
 ### Herdr config + keybindings (`terminal/herdr.toml`)
 
@@ -143,9 +152,25 @@ bytes were confirmed arriving at the terminal (`cat -v` echoed `^B`
 correctly); the multiplexer just never saw them as the prefix. Switching to
 `Ctrl+a` fixed it.
 
-If it recurs: confirm you're actually inside a Herdr client (`echo
-$HERDR_ENV`), check the live prefix in `terminal/herdr.toml`, then just try
-a different prefix key rather than chasing the root cause further.
+If it recurs, rule out the boring causes before blaming the terminal — the
+symptom is identical and the config ones are far more likely:
+
+1. **Stale client.** The prefix binds when the client *attaches*;
+   `herdr server reload-config` can't rebind a session you're already
+   sitting in. Detach (with the *old* prefix) and re-attach.
+2. **Wrong machine's config.** On a `--remote` attach, keybindings come from
+   whichever side `--remote-keybindings` names. `work` pins this to
+   `server`; a bare `herdr --remote <host>` does not, and will use the
+   client's config. Test with
+   `herdr --remote mini --remote-keybindings server` — if the prefix works
+   there, the local config is the problem, not the terminal.
+3. **Config not installed.** `ls -la ~/.config/herdr/config.toml` should be
+   a symlink into this repo. If it's a real file or missing, run
+   `script/bootstrap-shell` (move an existing file aside first).
+
+Only after those: confirm you're inside a Herdr client (`echo $HERDR_ENV`),
+check the live prefix in `terminal/herdr.toml`, then try a different prefix
+key rather than chasing the root cause further.
 
 ### Note on the tmux era
 

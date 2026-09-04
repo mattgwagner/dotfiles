@@ -13,11 +13,20 @@ _mini_host() {
 # Get to work: attach to Herdr on the mini. One persistent session; each
 # project is a workspace inside it (prefix+w to pick, prefix+shift+n for a new
 # one), so there's nothing to name or create out here.
+#
+# --remote-keybindings server is deliberate. Herdr defaults to "local", which
+# reads the keymap from the *client* machine — so a laptop whose
+# ~/.config/herdr/config.toml is missing or stock silently attaches with
+# Herdr's default ctrl+b prefix instead of ours, and the failure looks like
+# the terminal eating the keystroke. The mini owns the session, so let it own
+# the keymap too: one source of truth, and a machine that has never run
+# script/bootstrap-shell still gets the right keys.
+#
 # Usage: work [host]
 #   work              -> auto-picks mini (LAN) or mini-remote (away)
 #   work mini-remote  -> force a specific host, skips the reachability probe
 work() {
-  herdr --remote "$(_mini_host "$1")"
+  herdr --remote "$(_mini_host "$1")" --remote-keybindings server
 }
 
 alias yolo='claude --dangerously-skip-permissions --chrome'
