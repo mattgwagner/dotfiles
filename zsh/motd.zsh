@@ -1,6 +1,5 @@
 # Startup banner — key custom commands + live context, shown on every new
-# interactive shell on any Mac (laptop or mini). On the mini, this is sourced
-# right before ssh-tmux.zsh's auto-attach, so it shows once on SSH login and
+# interactive shell on any Mac (laptop or mini). It shows once on SSH login and
 # again per new tmux pane/window (each spawns its own shell).
 #
 # The command table below is static text, not derived from aliases.zsh —

@@ -53,7 +53,7 @@ What each installs:
 |---|---|
 | `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), startup banner (`zsh/motd.zsh`), `~/.zshrc.local` stub |
 | `script/bootstrap-mac` | `mssh <session> [host]` shell function (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
-| `script/bootstrap-mini` | `~/.tmux.conf` (`terminal/tmux.conf`); auto-attach-on-SSH-login (`zsh/ssh-tmux.zsh`); tmux plugin manager + resurrect/continuum for reboot survival |
+| `script/bootstrap-mini` | `~/.tmux.conf` (`terminal/tmux.conf`); tmux plugin manager + resurrect/continuum for reboot survival |
 
 Both scripts only append guarded `source` lines to `~/.zshrc` and symlink —
 they never overwrite an existing file.
