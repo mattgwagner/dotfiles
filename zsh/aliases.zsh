@@ -50,6 +50,9 @@ mkill() {
 
 alias yolo='claude --dangerously-skip-permissions --chrome'
 
+# Attach to the persistent herdr session on the mini (trial alongside mssh/tmux).
+alias hmini='herdr --remote mini'
+
 # List (or otherwise operate on) tmux sessions on the mini.
 # Usage: mtux ls [host]   -> list sessions
 #        mtux <session>   -> shorthand for mssh <session>
