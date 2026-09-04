@@ -1,6 +1,6 @@
 # Startup banner — key custom commands + live context, shown on every new
 # interactive shell on any Mac (laptop or mini). It shows once on SSH login and
-# again per new tmux pane/window (each spawns its own shell).
+# again per new Herdr pane/tab (each spawns its own shell).
 #
 # The command table below is static text, not derived from aliases.zsh —
 # update it by hand when adding/removing a command there.
@@ -47,26 +47,26 @@ _motd() {
     else
       # Stale or missing — show what we can and kick a refresh for the next
       # shell. Only spawn the probe when actually stale, so opening a bunch
-      # of tmux panes back-to-back doesn't fire a redundant ssh per pane.
+      # of Herdr panes back-to-back doesn't fire a redundant ssh per pane.
       mini_status="checking… (next shell will show it)"
       _motd_refresh_mini_status
     fi
   fi
 
-  local tmux_status="not active"
-  [[ -n "$TMUX" ]] && tmux_status="active ($(tmux display-message -p '#S' 2>/dev/null))"
+  local herdr_status="not active"
+  [[ -n "$HERDR_ENV" ]] && herdr_status="active (${HERDR_WORKSPACE_ID:-?}/${HERDR_PANE_ID:-?})"
 
   cat <<EOF
 ┌─ dotfiles ────────────────────────────────────────────────
-│ mssh <session> [host]     jump into / create tmux session on the mini
-│ mtux ls | <session>       list mini sessions, or shorthand for mssh
-│ mkill [session]           kill a tmux session on the mini
+│ hmini [session] [host]    attach to a Herdr session on the mini
+│ hls [host]                list Herdr sessions on the mini
+│ hkill <session> [host]    stop a Herdr session on the mini
 │ yolo                      claude --dangerously-skip-permissions --chrome
 │ use-incontext-foundry     switch to InContext Azure Foundry
 │ use-sittadel-foundry      switch to Sittadel Azure Foundry
 ├─────────────────────────────────────────────────────────
 │ ${dim}mini:    ${mini_status}
-│ tmux:    ${tmux_status}${reset}
+│ herdr:   ${herdr_status}${reset}
 └─────────────────────────────────────────────────────────
 EOF
 }

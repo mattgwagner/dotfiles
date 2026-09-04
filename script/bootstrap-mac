@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Installs the Mac-side half of the tmux/iTerm session setup:
-#   - sources zsh/aliases.zsh (mssh) from ~/.zshrc
+# Installs the Mac-side half of the Herdr/iTerm session setup:
+#   - sources zsh/aliases.zsh (hmini/hls/hkill) from ~/.zshrc
 #   - symlinks iTerm Dynamic Profiles so project sessions show up in ⌘O
 #
 # Safe to re-run. Never touches ~/.ssh/config (mini/mini-remote aliases are
@@ -22,4 +22,4 @@ link_file "$DOTFILES_ROOT/iterm/DynamicProfiles/mini-sessions.json" "$ITERM_PROF
 echo ""
 echo "  Mac side done. iTerm picks up Dynamic Profiles live — no restart needed."
 echo "  Open a profile with Cmd+O, or bind a hotkey in iTerm Prefs > Profiles > Keys."
-echo "  New shell: run 'source ~/.zshrc' or open a new tab to pick up mssh."
+echo "  New shell: run 'source ~/.zshrc' or open a new tab to pick up hmini."

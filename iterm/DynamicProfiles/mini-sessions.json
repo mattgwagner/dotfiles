@@ -6,9 +6,9 @@
       "Dynamic Profile Parent Name": "Default",
       "Custom Command": "SSH",
       "Command": "mini",
-      "Initial Text": "tmux new -A -s main",
+      "Initial Text": "herdr --session main",
       "Close Sessions On End": false,
-      "Tags": ["mini"],
+      "Tags": ["mini", "herdr"],
       "Badge Text": "main"
     },
     {
@@ -17,9 +17,9 @@
       "Dynamic Profile Parent Name": "Default",
       "Custom Command": "SSH",
       "Command": "mini-remote",
-      "Initial Text": "tmux new -A -s main",
+      "Initial Text": "herdr --session main",
       "Close Sessions On End": false,
-      "Tags": ["mini-remote"],
+      "Tags": ["mini-remote", "herdr"],
       "Badge Text": "main (remote)"
     }
   ]

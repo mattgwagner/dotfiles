@@ -2,12 +2,12 @@
 #
 # Installs the machine-agnostic shell environment on any Mac:
 #   - zsh/env.zsh     (Homebrew, nvm, uv, bun, opencode, docker completions, iTerm)
-#   - zsh/aliases.zsh (mssh, mkill, yolo)
+#   - zsh/aliases.zsh (hmini, hls, hkill, yolo)
 #   - zsh/foundry.zsh (Claude Code Azure Foundry subscription switching)
 #   - zsh/motd.zsh    (startup banner — commands + live context)
 #
-# Run this before bootstrap-mac / bootstrap-mini. Safe to re-run — it only
-# appends guarded source lines to ~/.zshrc, never overwrites it.
+# Run this before bootstrap-mac. Safe to re-run — it only appends guarded
+# source lines to ~/.zshrc, never overwrites it.
 #
 # Secrets (Foundry API keys, per-machine overrides) go in ~/.zshrc.local,
 # which this script creates as a stub and which is never committed.
