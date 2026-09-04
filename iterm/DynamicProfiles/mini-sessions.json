@@ -1,26 +1,32 @@
 {
   "Profiles": [
     {
-      "Name": "mini: main",
+      "Name": "mini: work",
       "Guid": "9864C99B-B81D-412C-BB2D-7C9B899E2B24",
       "Dynamic Profile Parent Name": "Default",
       "Custom Command": "SSH",
       "Command": "mini",
-      "Initial Text": "herdr --session main",
+      "Initial Text": "herdr",
       "Close Sessions On End": false,
-      "Tags": ["mini", "herdr"],
-      "Badge Text": "main"
+      "Tags": [
+        "mini",
+        "herdr"
+      ],
+      "Badge Text": "work"
     },
     {
-      "Name": "mini-remote: main",
+      "Name": "mini-remote: work",
       "Guid": "0A128912-3B4A-470D-A43E-25DDD0199E95",
       "Dynamic Profile Parent Name": "Default",
       "Custom Command": "SSH",
       "Command": "mini-remote",
-      "Initial Text": "herdr --session main",
+      "Initial Text": "herdr",
       "Close Sessions On End": false,
-      "Tags": ["mini-remote", "herdr"],
-      "Badge Text": "main (remote)"
+      "Tags": [
+        "mini-remote",
+        "herdr"
+      ],
+      "Badge Text": "work (remote)"
     }
   ]
 }

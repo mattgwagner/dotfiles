@@ -58,9 +58,7 @@ _motd() {
 
   cat <<EOF
 ┌─ dotfiles ────────────────────────────────────────────────
-│ hmini [session] [host]    attach to a Herdr session on the mini
-│ hls [host]                list Herdr sessions on the mini
-│ hkill <session> [host]    stop a Herdr session on the mini
+│ work [host]               attach to Herdr on the mini
 │ yolo                      claude --dangerously-skip-permissions --chrome
 │ use-incontext-foundry     switch to InContext Azure Foundry
 │ use-sittadel-foundry      switch to Sittadel Azure Foundry

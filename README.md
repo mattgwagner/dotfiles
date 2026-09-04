@@ -12,7 +12,7 @@ git clone https://github.com/mattgwagner/dotfiles.git ~/.dotfiles
 ```
 
 Installs `zsh/env.zsh` (Homebrew, nvm, uv, bun, opencode, Docker completions,
-iTerm integration), `zsh/aliases.zsh` (`hmini`, `hls`, `hkill`, `yolo`),
+iTerm integration), `zsh/aliases.zsh` (`work`, `yolo`),
 `zsh/foundry.zsh` (Claude Code Azure Foundry subscription switching),
 `zsh/motd.zsh` (startup banner listing the above plus live mini/foundry/herdr
 status, shown on every new interactive shell), and — if Herdr is installed —
@@ -57,29 +57,29 @@ What each installs:
 | Script | Installs |
 |---|---|
 | `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), startup banner (`zsh/motd.zsh`), `~/.zshrc.local` stub, Herdr config (`terminal/herdr.toml`) |
-| `script/bootstrap-mac` | `hmini` / `hls` / `hkill` shell functions (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
+| `script/bootstrap-mac` | `work` shell function (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
 
 Both scripts only append guarded `source` lines to `~/.zshrc` and symlink —
 they never overwrite an existing file.
 
-Use it via the iTerm profile picker (Cmd+O, fuzzy-search "mini: ...") or from
-any shell:
+Get to work — from any shell, or the iTerm profile picker (Cmd+O,
+fuzzy-search "work"):
 
 | Command | Action |
 |---|---|
-| `hmini` | Attach to the default Herdr session on the mini |
-| `hmini <session>` | Attach to / create a named session; auto-picks `mini` (LAN) or `mini-remote` (away) |
-| `hmini <session> mini-remote` | Force a host, skipping the reachability probe |
-| `hls [host]` | List the mini's Herdr sessions (`herdr session list` over SSH) |
-| `hkill <session> [host]` | Stop a named session — confirms first, since it kills what's running inside |
+| `work` | Attach to Herdr on the mini; auto-picks `mini` (LAN) or `mini-remote` (away) |
+| `work mini-remote` | Force a host, skipping the reachability probe |
 
-`hmini` uses Herdr's `--remote` client/server attach; the iTerm profiles
-instead SSH in and run `herdr --session main` on the mini (see
-[`terminal/AGENTS.md`](terminal/AGENTS.md) for why, and for how to add a new
-project's session/profile).
+That's the whole surface. **One persistent session; each project is a
+workspace inside it** — `prefix+shift+n` to create (it prompts for a name),
+`prefix+w` for the picker, `ctrl+shift+1..9` to jump. Nothing per-project
+lives in this repo, so adding a project needs no change here and no bootstrap
+re-run.
 
-Idle sessions cost almost nothing — `hkill` is for reclaiming what's *running
-inside* one, not for tidying up the list.
+`work` uses Herdr's `--remote` client/server attach; the iTerm profiles
+instead SSH in and run `herdr` on the mini. See
+[`terminal/AGENTS.md`](terminal/AGENTS.md) for why, and for the rules on
+editing the profiles.
 
 ### Herdr config + keybindings (`terminal/herdr.toml`)
 
@@ -97,12 +97,15 @@ terminal.
 
 | Keys | Action |
 |---|---|
+| `Ctrl+Shift+1`…`9` | Switch **workspace** (no prefix) |
+| `Ctrl+Alt+←` / `Ctrl+Alt+→` | Previous / next workspace (no prefix) |
+| `Ctrl+a` `w` | Workspace picker |
+| `Ctrl+a` `Shift+n` | New workspace (prompts for a name) |
 | `Ctrl+1`…`Ctrl+9` | Switch tab (no prefix — the closest thing to iTerm's `Cmd+1..9`) |
 | `Ctrl+Alt+n` / `Ctrl+Alt+p` | Next / previous tab (no prefix) |
+| `Ctrl+a` `c` | New tab |
 | `Ctrl+a` `v` / `Ctrl+a` `-` | Split vertical / horizontal |
 | `Ctrl+a` `h`/`j`/`k`/`l` | Move between panes |
-| `Ctrl+a` `c` | New tab |
-| `Ctrl+a` `w` | Workspace picker |
 | `Ctrl+a` `z` | Zoom pane |
 | `Ctrl+a` `q` | Detach |
 | `Ctrl+a` `?` | Help — the full live keymap |
@@ -119,9 +122,10 @@ local shell, not a Herdr pane).
 `Ctrl+Alt+…` requires iTerm's Left Option key set to **"Esc+"** (Profiles >
 Keys). Without it, Alt types literal characters and those bindings are dead.
 
-`ctrl+1..9` uses the `[keys.indexed]` block, which Herdr documents as a
-legacy compatibility path — but it's the only documented way to get *direct,
-prefix-free* number switching. Revisit if a future Herdr version drops it.
+The number switching uses the `[keys.indexed]` block, which Herdr documents
+as a legacy compatibility path — but it's the only documented way to get
+*direct, prefix-free* number switching. Revisit if a future Herdr version
+drops it.
 
 If a binding gets wedged, `herdr config reset-keys` backs up the config and
 drops customizations.
@@ -148,6 +152,7 @@ a different prefix key rather than chasing the root cause further.
 Before Sep 2026 this repo carried a full tmux layer: `terminal/tmux.conf`
 (prefix remapped to `Ctrl+a`, tmux-resurrect + tmux-continuum for reboot
 survival), `script/bootstrap-mini`, and the `mssh` / `mtux` / `mkill` shell
-functions. All of it was removed when Herdr took over. It's recoverable from
+functions. All of it was removed when Herdr took over; named sessions went
+too, since workspaces cover the same ground with less ceremony. It's recoverable from
 git history if Herdr ever disappoints — the last commit that still had it is
 the parent of the one that removed it.

@@ -23,13 +23,23 @@ prefix = "ctrl+a"
 next_tab = "ctrl+alt+n"
 previous_tab = "ctrl+alt+p"
 
+# Workspaces are the per-project unit here (one session, many workspaces),
+# so give them prefix-free cycling too.
+next_workspace = "ctrl+alt+right"
+previous_workspace = "ctrl+alt+left"
+
 # Splits and pane navigation stay on the prefix — vim-shaped, same as tmux,
 # and not worth burning scarce direct ctrl chords on.
 
 [keys.indexed]
-# ctrl+1..9 switches tabs with no prefix — the closest analogue to iTerm's
-# cmd+1..9, which a TUI can never receive.
-tabs = "ctrl"
+# Prefix-free number switching — the closest analogue to iTerm's cmd+1..9,
+# which a TUI can never receive.
+tabs = "ctrl"            # ctrl+1..9       -> tabs
+workspaces = "ctrl+shift" # ctrl+shift+1..9 -> workspaces
 
 [ui]
 show_agent_labels_on_pane_borders = false
+
+# Workspaces are the per-project unit, so prompt for a name on create rather
+# than generating one — an unnamed workspace is useless in the picker.
+prompt_new_workspace_name = true

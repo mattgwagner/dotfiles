@@ -10,40 +10,14 @@ _mini_host() {
   fi
 }
 
-# Attach to a named persistent Herdr session on the mini, creating it if it
-# doesn't exist. Herdr keeps the session (and everything running in it) alive
-# server-side, so detaching or dropping the SSH link doesn't kill your work.
-# Usage: hmini [session-name] [host]
-#   hmini                      -> attach to the default session
-#   hmini readerful            -> auto-picks mini (LAN) or mini-remote (away)
-#   hmini readerful mini-remote -> force a specific host, skips the probe
-hmini() {
-  local session="$1"
-  local host="$(_mini_host "$2")"
-  if [[ -n "$session" ]]; then
-    herdr --remote "$host" --session "$session"
-  else
-    herdr --remote "$host"
-  fi
-}
-
-# List the Herdr sessions on the mini (name, status, directory, socket).
-# Usage: hls [host]
-hls() {
-  local host="$(_mini_host "$1")"
-  ssh -o ConnectTimeout=3 "$host" 'herdr session list' 2>/dev/null
-}
-
-# Stop a named Herdr session on the mini — the counterpart to hmini. This kills
-# what's running inside it, so it asks first.
-# Usage: hkill <session-name> [host]
-hkill() {
-  local session="${1:?usage: hkill <session-name> [host]}"
-  local host="$(_mini_host "$2")"
-  print "hkill: stopping session '$session' on $host"
-  read -q "?Anything running inside it dies. Continue? [y/N] " || { print; return 1 }
-  print
-  ssh -o ConnectTimeout=5 "$host" "herdr session stop '$session'"
+# Get to work: attach to Herdr on the mini. One persistent session; each
+# project is a workspace inside it (prefix+w to pick, prefix+shift+n for a new
+# one), so there's nothing to name or create out here.
+# Usage: work [host]
+#   work              -> auto-picks mini (LAN) or mini-remote (away)
+#   work mini-remote  -> force a specific host, skips the reachability probe
+work() {
+  herdr --remote "$(_mini_host "$1")"
 }
 
 alias yolo='claude --dangerously-skip-permissions --chrome'

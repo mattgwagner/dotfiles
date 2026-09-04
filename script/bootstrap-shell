@@ -2,7 +2,7 @@
 #
 # Installs the machine-agnostic shell environment on any Mac:
 #   - zsh/env.zsh     (Homebrew, nvm, uv, bun, opencode, docker completions, iTerm)
-#   - zsh/aliases.zsh (hmini, hls, hkill, yolo)
+#   - zsh/aliases.zsh (work, yolo)
 #   - zsh/foundry.zsh (Claude Code Azure Foundry subscription switching)
 #   - zsh/motd.zsh    (startup banner — commands + live context)
 #   - terminal/herdr.toml -> ~/.config/herdr/config.toml (Herdr keybindings)

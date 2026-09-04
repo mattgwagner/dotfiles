@@ -1,67 +1,47 @@
-# Adding a new project Herdr/iTerm session
+# Terminal setup: Herdr workspaces + iTerm profiles
 
-Two things need to exist for a new project context: a named Herdr session on
-the mini, and an iTerm Dynamic Profile that opens it. Both are cheap — no
-bootstrap re-run required for the common case.
+## Adding a project context — do it in Herdr, not here
 
-## 1. Pick a session name
+Each project is a **Herdr workspace** inside the single persistent session on
+the mini. `prefix+shift+n` creates one (it prompts for a name), `prefix+w`
+opens the picker, `ctrl+shift+1..9` jumps straight to one.
 
-Use the project's short slug, e.g. `readerful`, `sittadel`, `redleg-web`.
-There's nothing to create in advance — `herdr --session <name>` creates the
-session on first use, and `herdr session list` shows what already exists.
+Nothing in this repo needs to change to add a project. There is no
+profile-per-project, no named session to create, no bootstrap re-run. If
+you're about to edit `iterm/DynamicProfiles/mini-sessions.json` to add a
+project, you're solving it at the wrong layer.
 
-## 2. Add an iTerm profile
+## The iTerm profiles
 
-Edit `iterm/DynamicProfiles/mini-sessions.json` in this repo and append a
-new entry to `"Profiles"`:
+Two, and there should stay two: `mini: work` (LAN) and `mini-remote: work`
+(away). Both SSH to the mini and run `herdr` — that's all they do. Cmd+O,
+fuzzy-search "work". The `work` shell function does the same thing with an
+automatic LAN-vs-away probe, so the profiles exist mainly for the Cmd+O
+muscle memory and an optional hotkey binding.
 
-```json
-{
-  "Name": "mini: <project>",
-  "Guid": "<run `uuidgen`, paste result, never reuse or change it later>",
-  "Dynamic Profile Parent Name": "Default",
-  "Custom Command": "SSH",
-  "Command": "mini",
-  "Initial Text": "herdr --session <project>",
-  "Close Sessions On End": false,
-  "Tags": ["mini", "herdr"],
-  "Badge Text": "<project>"
-}
-```
+### Rules for editing the profiles
 
-`Custom Command: "SSH"` is iTerm's native SSH integration (the same
-mechanism the existing "Andy" profile uses) — `Command` is just the SSH
-host alias, and `Initial Text` is typed into the shell right after connect,
-so Herdr runs *on the mini*, not locally.
+- **Keep `Custom Command: "SSH"`.** That's iTerm's native SSH integration —
+  `Command` is a bare host alias and `Initial Text` is typed into the shell
+  after connect, so Herdr runs on the mini. Do **not** switch to
+  `Custom Command: "Yes"` (needed to run `herdr --remote` locally): on this
+  iTerm version `"Yes"` / `"Custom Shell"` silently falls through to a plain
+  local shell instead of erroring, which is what made the first version of
+  these profiles look broken. Use the `work` function if you want the
+  `--remote` client/server attach.
+- **`Guid` is permanent** once picked — iTerm keys off it, not the name.
+  `uuidgen` for a genuinely new profile; never reuse or change an existing one.
+- **Don't touch `Dynamic Profile Parent Name`** — it inherits font, colors,
+  and keys from the iTerm "Default" profile so you don't have to restate them.
+- **Set Left Option to "Esc+"** (Preferences > Profiles > Keys) or every
+  `ctrl+alt+…` binding in `terminal/herdr.toml` is dead and Alt just types
+  literal characters.
+- **Commit changes here** — this file is the source of truth; the copy under
+  `~/Library/Application Support/iTerm2/DynamicProfiles/` is a symlink created
+  by `script/bootstrap-mac`. iTerm watches that directory and reloads live, so
+  no restart and no bootstrap re-run is needed.
 
-**Do not switch these to `Custom Command: "Yes"`** to run `herdr --remote`
-directly. On this iTerm version `"Yes"`/`"Custom Shell"` silently falls
-through to a plain local shell instead of erroring — that's what made the
-first version of these profiles look broken. Stick to native SSH mode. If
-you want the client/server `--remote` attach instead, use the `hmini` shell
-function from any terminal; it's not worth fighting iTerm for.
+### Optional: a hotkey
 
-Copy the block again with `Command: "mini-remote"` for an away-from-home
-variant — see the existing `mini-remote: main` entry. Native SSH profiles
-target one host each; there's no auto-fallback at this layer (that's what
-`hmini` does — use it directly when you don't want two profiles per project).
-
-Save the file. iTerm watches `~/Library/Application Support/iTerm2/DynamicProfiles/`
-and reloads automatically (that's a symlink to this file — no bootstrap
-re-run needed). Open it via Cmd+O and fuzzy-search the project name.
-
-## 3. (Optional) bind a hotkey
-
-For a project you jump into constantly: iTerm Preferences > Profiles >
-Keys > check "Show this profile in the hotkey list", then assign a global
-shortcut in Preferences > Keys > Hotkey Window.
-
-## Rules
-
-- One profile per project; `Command` is always a bare SSH host alias
-  (`mini` or `mini-remote`), never a full command line.
-- `Guid` is permanent once picked — iTerm keys off it, not the name.
-- Don't touch `Dynamic Profile Parent Name` — it inherits font/colors/keys
-  from the iTerm "Default" profile so you don't have to restate them.
-- Commit the change — this file is the source of truth; the copy under
-  `~/Library/Application Support/iTerm2/DynamicProfiles/` is a symlink.
+Preferences > Profiles > Keys > "Show this profile in the hotkey list", then
+assign a global shortcut under Preferences > Keys > Hotkey Window.
