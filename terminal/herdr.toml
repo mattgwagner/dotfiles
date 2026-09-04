@@ -30,10 +30,10 @@ previous_workspace = "ctrl+alt+left"
 
 # Splits and pane navigation stay on the prefix — vim-shaped, same as tmux,
 # and not worth burning scarce direct ctrl chords on. Herdr's own defaults,
-# restated here only because the vertical/horizontal names are ambiguous and
-# zsh/motd.zsh advertises them by outcome: split_vertical puts the new pane
-# to the RIGHT, split_horizontal puts it BELOW ("-" = a horizontal divider).
-# If that turns out reversed in practice, swap these two lines and the motd.
+# restated here only because the vertical/horizontal names are ambiguous —
+# Herdr's own pane menu calls these "Split right" and "Split down" — and
+# zsh/motd.zsh advertises them by outcome, so the mapping needs to be written
+# down somewhere we own. Confirmed by hand 2026-09-04, not inferred.
 split_vertical = "prefix+v"    # new pane to the right
 split_horizontal = "prefix+minus" # new pane below
 
