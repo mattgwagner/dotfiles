@@ -29,7 +29,13 @@ next_workspace = "ctrl+alt+right"
 previous_workspace = "ctrl+alt+left"
 
 # Splits and pane navigation stay on the prefix — vim-shaped, same as tmux,
-# and not worth burning scarce direct ctrl chords on.
+# and not worth burning scarce direct ctrl chords on. Herdr's own defaults,
+# restated here only because the vertical/horizontal names are ambiguous and
+# zsh/motd.zsh advertises them by outcome: split_vertical puts the new pane
+# to the RIGHT, split_horizontal puts it BELOW ("-" = a horizontal divider).
+# If that turns out reversed in practice, swap these two lines and the motd.
+split_vertical = "prefix+v"    # new pane to the right
+split_horizontal = "prefix+minus" # new pane below
 
 [keys.indexed]
 # Prefix-free number switching — the closest analogue to iTerm's cmd+1..9,

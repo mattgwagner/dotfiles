@@ -2,8 +2,10 @@
 # interactive shell on any Mac (laptop or mini). It shows once on SSH login and
 # again per new Herdr pane/tab (each spawns its own shell).
 #
-# The command table below is static text, not derived from aliases.zsh —
-# update it by hand when adding/removing a command there.
+# The command and keybinding tables below are static text, not derived from
+# aliases.zsh or terminal/herdr.toml — update them by hand when either
+# changes. Keybindings must match terminal/herdr.toml, including which split
+# goes right vs down.
 #
 # Mini reachability is read from a cache file, never probed live here: `ssh
 # mini` resolves `matts-mac-mini.local` via mDNS, and ConnectTimeout does NOT
@@ -58,14 +60,20 @@ _motd() {
 
   cat <<EOF
 ┌─ dotfiles ────────────────────────────────────────────────
-│ work [host]               attach to Herdr on the mini
-│ yolo                      claude --dangerously-skip-permissions --chrome
-│ use-incontext-foundry     switch to InContext Azure Foundry
-│ use-sittadel-foundry      switch to Sittadel Azure Foundry
-├─────────────────────────────────────────────────────────
+│ work [host]              attach to Herdr on the mini
+│ yolo                     claude, skip permissions + chrome
+│ use-incontext-foundry    switch to InContext Azure Foundry
+│ use-sittadel-foundry     switch to Sittadel Azure Foundry
+├─ herdr · prefix ^A · caps = shift · ^A ? = all keys ──────
+│ ^A c   new tab            ^A v  split right
+│ ^A w   workspace picker   ^A -  split down
+│ ^A N   new workspace      ^A x  close pane
+│ ^A W   rename workspace   ^A z  zoom pane
+│ ^1..9  switch tab         ^A q  detach
+├───────────────────────────────────────────────────────────
 │ ${dim}mini:    ${mini_status}
 │ herdr:   ${herdr_status}${reset}
-└─────────────────────────────────────────────────────────
+└───────────────────────────────────────────────────────────
 EOF
 }
 
