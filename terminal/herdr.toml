@@ -49,3 +49,13 @@ show_agent_labels_on_pane_borders = false
 # Workspaces are the per-project unit, so prompt for a name on create rather
 # than generating one — an unnamed workspace is useless in the picker.
 prompt_new_workspace_name = true
+
+# With many agents across workspaces, surface who needs attention first and
+# make blocked/working/done readable without relying on color alone.
+agent_panel_sort = "priority"
+status_indicators = "symbols"
+
+# Background agents finish or block while you're in another workspace —
+# OS notifications so you notice without watching the sidebar.
+[ui.toast]
+delivery = "system"
