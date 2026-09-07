@@ -6,6 +6,11 @@
 # Reload without restarting: herdr server reload-config
 # See all available settings: herdr --default-config
 
+# Both machines are past first-run onboarding. Herdr shows the onboarding flow
+# when this is true *or missing*, so it has to be stated explicitly here — the
+# key it wrote into its own config is lost once this file takes over.
+onboarding = false
+
 [terminal]
 # New panes, tabs, and workspaces start in $HOME instead of inheriting the source cwd.
 new_cwd = "home"
