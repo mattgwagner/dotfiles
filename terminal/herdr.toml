@@ -64,3 +64,7 @@ status_indicators = "symbols"
 # OS notifications so you notice without watching the sidebar.
 [ui.toast]
 delivery = "system"
+
+[theme]
+name = "solarized"
+auto_switch = false
