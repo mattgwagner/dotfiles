@@ -1,7 +1,8 @@
 # Switch Claude Code between client-owned Azure AI Foundry subscriptions.
 #
 # The API keys are client credentials and are NOT in this repo. Put them in
-# ~/.zshrc.local (untracked), which is sourced before this file:
+# ~/.shell.local (untracked), which is sourced before this file. The older
+# ~/.zshrc.local is still sourced too, so existing machines keep working:
 #
 #   export INCONTEXT_FOUNDRY_API_KEY=...
 #   export SITTADEL_FOUNDRY_API_KEY=...
@@ -17,7 +18,7 @@ use-incontext-foundry() {
     # INCONTEXT_FOUNDRY_API_KEY must hold the APIM subscription primaryKey
     # (mint via the runbook in that note), not a raw Foundry resource key.
     if [ -z "$INCONTEXT_FOUNDRY_API_KEY" ]; then
-        echo "INCONTEXT_FOUNDRY_API_KEY not set — add it to ~/.zshrc.local" >&2
+        echo "INCONTEXT_FOUNDRY_API_KEY not set — add it to ~/.shell.local" >&2
         return 1
     fi
     export CLAUDE_CODE_USE_FOUNDRY=1
@@ -40,7 +41,7 @@ use-incontext-foundry() {
 
 use-sittadel-foundry() {
     if [ -z "$SITTADEL_FOUNDRY_API_KEY" ]; then
-        echo "SITTADEL_FOUNDRY_API_KEY not set — add it to ~/.zshrc.local" >&2
+        echo "SITTADEL_FOUNDRY_API_KEY not set — add it to ~/.shell.local" >&2
         return 1
     fi
     export CLAUDE_CODE_USE_FOUNDRY=1

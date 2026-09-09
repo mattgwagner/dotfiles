@@ -11,7 +11,8 @@
 #
 # Rule for anything added here: no hardcoded /Users/<name> paths, and no
 # unguarded `source`. Machine-specific values and secrets belong in
-# ~/.zshrc.local, which is sourced last and never committed.
+# ~/.shell.local, which is sourced before foundry.sh and never committed
+# (~/.zshrc.local is still honoured on machines that predate the rename).
 
 # --- Homebrew ---------------------------------------------------------------
 # Apple Silicon installs to /opt/homebrew, Intel to /usr/local.
