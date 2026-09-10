@@ -37,6 +37,9 @@ use-incontext-foundry() {
     export ENABLE_PROMPT_CACHING_1H=1
     export CLAUDE_CODE_ENABLE_AUTO_MODE=1
     echo "Switched to InContext Azure Foundry subscription (via APIM gateway)"
+    # Always paired with yolo — this switch is only ever a prelude to opening
+    # Claude Code against the InContext subscription, never a standalone step.
+    yolo
 }
 
 use-sittadel-foundry() {
@@ -54,6 +57,9 @@ use-sittadel-foundry() {
     export ENABLE_PROMPT_CACHING_1H=1
     export CLAUDE_CODE_ENABLE_AUTO_MODE=1
     echo "Switched to Sittadel Azure Foundry subscription"
+    # Always paired with yolo — this switch is only ever a prelude to opening
+    # Claude Code against the Sittadel subscription, never a standalone step.
+    yolo
 }
 
 # Default to the Claude Code subscription; the functions above opt in per shell.
