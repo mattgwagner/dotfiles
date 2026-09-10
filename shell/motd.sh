@@ -72,8 +72,8 @@ _motd() {
 ┌─ dotfiles ────────────────────────────────────────────────
 │ work [host]              attach to Herdr on andy
 │ yolo                     claude, skip permissions + chrome
-│ use-incontext-foundry    switch to InContext Foundry + open yolo
-│ use-sittadel-foundry     switch to Sittadel Foundry + open yolo
+│ use-incontext-foundry    open Claude Code with InContext Foundry
+│ use-sittadel-foundry     open Claude Code with Sittadel Foundry
 ├─ herdr · prefix ^A · caps = shift · ^A ? = all keys ──────
 │ ^A c   new tab            ^A v  split right
 │ ^A w   workspace picker   ^A -  split down
