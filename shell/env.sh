@@ -50,6 +50,22 @@ if command -v mise >/dev/null 2>&1; then
   fi
 fi
 
+# --- .NET package pruning ---------------------------------------------------
+# Arch's split dotnet-sdk/aspnet-runtime packages ship the SDK without its
+# PrunePackageData, so every Microsoft.NET.Sdk.Web / BlazorWebAssembly project
+# dies with NETSDK1226 ("Prune Package data not found ... Microsoft.AspNetCore.App").
+# Non-web projects build fine, which makes it look project-specific.
+#
+# Guarded on the data actually being absent rather than on the OS: macOS keeps
+# its SDKs elsewhere so the glob no-ops there, and the day Arch ships the data
+# this stops setting itself and real pruning errors surface again. MSBuild reads
+# environment variables as properties, so this is equivalent to -p:… per build.
+for _dotnet_sdk in /usr/share/dotnet/sdk/*/; do
+  [ -d "$_dotnet_sdk" ] || continue
+  [ -d "${_dotnet_sdk}PrunePackageData" ] || export AllowMissingPrunePackageData=true
+done
+unset _dotnet_sdk
+
 # --- opencode ---------------------------------------------------------------
 [ -d "$HOME/.opencode/bin" ] && export PATH="$HOME/.opencode/bin:$PATH"
 
