@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# Installs the Mac-side half of the Herdr/iTerm session setup:
-#   - sources zsh/aliases.zsh (work) from ~/.zshrc
-#   - symlinks iTerm Dynamic Profiles so project sessions show up in ⌘O
+# Installs Mac-only extras. Do not fold these into bootstrap-shell — that
+# script also runs on Omarchy, and Finder/iTerm bits do not belong there.
+#   - iTerm Dynamic Profiles so project sessions show up in ⌘O
+#   - send-to-omarchy CLI + Finder Quick Action (Taildrop to Andy)
 #
 # Safe to re-run. Never touches ~/.ssh/config (mini/mini-remote aliases are
 # assumed to already exist there) and never overwrites an existing ~/.zshrc
@@ -13,13 +14,45 @@ cd "$(dirname "$0")/.."
 DOTFILES_ROOT=$(pwd -P)
 source script/lib.sh
 
-ensure_sourced "$HOME/.zshrc" "$DOTFILES_ROOT/zsh/aliases.zsh"
+# Aliases (`work`) come from bootstrap-shell's managed block. Do not append
+# a second source here — the old zsh/aliases.zsh path no longer exists.
 
 ITERM_PROFILES_DIR="$HOME/Library/Application Support/iTerm2/DynamicProfiles"
 mkdir -p "$ITERM_PROFILES_DIR"
 link_file "$DOTFILES_ROOT/iterm/DynamicProfiles/mini-sessions.json" "$ITERM_PROFILES_DIR/mini-sessions.json"
 
+# Finder services are copies, not symlinks — Launch Services is picky.
+# Replacing is allowed only when the dest is already our bundle.
+install_finder_service() {
+  local src=$1 dst=$2 marker=$3
+  mkdir -p "$(dirname "$dst")"
+  if [ -L "$dst" ]; then
+    rm "$dst"
+  elif [ -e "$dst" ]; then
+    if [ -f "$dst/Contents/Info.plist" ] && grep -qF "$marker" "$dst/Contents/Info.plist"; then
+      rm -rf "$dst"
+    else
+      fail "$dst already exists and isn't ours — move it aside and re-run"
+    fi
+  fi
+  cp -R "$src" "$dst"
+  success "installed $(basename "$dst")"
+}
+
+chmod +x "$DOTFILES_ROOT/macos/send-to-omarchy"
+# A previous hand-install left a real file here; replace it with the repo link.
+if [ -e "$HOME/.local/bin/send-to-omarchy" ] && [ ! -L "$HOME/.local/bin/send-to-omarchy" ]; then
+  rm "$HOME/.local/bin/send-to-omarchy"
+fi
+link_file "$DOTFILES_ROOT/macos/send-to-omarchy" "$HOME/.local/bin/send-to-omarchy"
+install_finder_service \
+  "$DOTFILES_ROOT/macos/send-to-omarchy.workflow" \
+  "$HOME/Library/Services/Send to Omarchy.workflow" \
+  "dev.redleg.services.sendToOmarchy"
+/System/Library/CoreServices/pbs -flush 2>/dev/null || true
+
 echo ""
 echo "  Mac side done. iTerm picks up Dynamic Profiles live — no restart needed."
 echo "  Open a profile with Cmd+O, or bind a hotkey in iTerm Prefs > Profiles > Keys."
 echo "  New shell: run 'source ~/.zshrc' or open a new tab to pick up work."
+echo "  Finder: right-click a file → Quick Actions → Send to Omarchy."

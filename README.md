@@ -57,7 +57,7 @@ What each installs:
 | Script | Installs |
 |---|---|
 | `script/bootstrap-shell` | shell environment (`zsh/env.zsh`), aliases (`zsh/aliases.zsh`), Foundry switching (`zsh/foundry.zsh`), startup banner (`zsh/motd.zsh`), `~/.zshrc.local` stub, Herdr config (`terminal/herdr.toml`) |
-| `script/bootstrap-mac` | `work` shell function (`zsh/aliases.zsh`); iTerm Dynamic Profiles (`iterm/DynamicProfiles/`) |
+| `script/bootstrap-mac` | iTerm Dynamic Profiles (`iterm/DynamicProfiles/`); `send-to-omarchy` CLI + Finder Quick Action |
 
 Both scripts only append guarded `source` lines to `~/.zshrc` and symlink —
 they never overwrite an existing file.
