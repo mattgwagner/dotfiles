@@ -72,6 +72,7 @@ _motd() {
 ┌─ dotfiles ────────────────────────────────────────────────
 │ work [host]              attach to Herdr on andy
 │ yolo                     claude, skip permissions + chrome
+│ gsd <url>                /get-shit-done from the shell
 │ use-incontext-foundry    open Claude Code with InContext Foundry
 │ use-sittadel-foundry     open Claude Code with Sittadel Foundry
 ├─ herdr · prefix ^A · caps = shift · ^A ? = all keys ──────
