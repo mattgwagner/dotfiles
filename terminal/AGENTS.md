@@ -140,6 +140,43 @@ status`) is the real completion signal; `idle` is not.
 - Report files are deleted on spawn. A stale report from a previous run of the
   same name would read as this run's answer the moment `herd inbox` looked.
 
+### Which harness gets the work — dispatch against the quota you have
+
+A dispatch decision is a spend decision. Claude subagents and Claude tabs draw
+on the **same session quota as the driver**, so a driver that fans out five
+Claude children is racing its own conversation to the limit — and the driver
+hitting a wall mid-run is worse than any single child being slower, because
+nothing is left to collect the reports or resolve a push conflict.
+
+Route by what the work needs, then by what it costs:
+
+| Route | Command | Use it for |
+|---|---|---|
+| Subagent, same session | `Agent` tool | Fan-out **reads** where only the conclusion matters. No pane, no tab. |
+| Claude tab | `gsd --spawn <url>` | Work that needs Claude's judgement — ambiguous scope, a design call, a surface you have to reason about. |
+| **Cursor tab** | `gsd --spawn --cursor <url>` | Everything else, and **the default once the Claude session is in sight of its limit.** Same `get-shit-done` skill, different quota. |
+| Foundry | `gsd --foundry <url>` | InContext work, so it bills to their subscription. Cannot be `--spawn`ed. |
+
+Rules that hold regardless of route:
+
+- **Check the balance before the second wave, not after.** The moment you are
+  dispatching a *batch*, ask which harness each item needs. Handing all of it to
+  Claude because the first one went there is how the session ends mid-flight.
+- **Never re-route work that is already in flight.** Killing a child to move it
+  to a cheaper harness throws away the expensive part — the worktree, the
+  reading, the half-written diff. Let it finish and send the *next* item
+  elsewhere.
+- **Give every child the collision map.** Parallel gsd children share one repo.
+  Each brief names the other children's surfaces, the files they share, and the
+  house rules: plain `git worktree add`, `git pull --rebase` before start and
+  before every push, stage by path (never `-A`), never `git reset --hard`, never
+  `tailscale serve reset` (host-global — it kills the other children's browser
+  verification).
+- **Sequence, don't just parallelise.** Two items that edit the same prompt or
+  the same test file are not two dispatches, they are one queue. Hold the second
+  until the first lands, especially when it should be written *against* the
+  first one's behaviour.
+
 ### Context, not just panes
 
 The driver's context window is the bottleneck, not the pane count. It should
