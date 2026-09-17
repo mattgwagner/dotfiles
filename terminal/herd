@@ -358,7 +358,10 @@ def main():
     s.set_defaults(fn=cmd_read)
 
     s = sub.add_parser("reviewer"); s.add_argument("name")
-    s.add_argument("--kind", default="codex")
+    # cursor, not codex: codex is not signed in on this host and Matt does not
+    # use it, so a codex default silently parks the reviewer at a login prompt
+    # that Herdr reports as `idle`.
+    s.add_argument("--kind", default="cursor")
     s.set_defaults(fn=cmd_reviewer)
 
     s = sub.add_parser("ask"); s.add_argument("name"); s.add_argument("prompt")
