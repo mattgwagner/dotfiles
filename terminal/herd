@@ -29,7 +29,10 @@ Usage:
   herd notify <title> [--body TEXT] [--sound done|request]
   herd close <pane>
 
-Requires HERDR_ENV=1 — controlling the session from outside it targets whatever
+  herd --machine <label> status     the same, against a saved SSH machine
+                                    (herdr 0.9.1+; observe/steer verbs only)
+
+Without --machine, requires HERDR_ENV=1 — controlling the session from outside it targets whatever
 pane some other client happens to have focused.
 """
 
@@ -50,15 +53,39 @@ def die(msg, code=1):
     sys.exit(code)
 
 
-def require_herdr():
+# Set by --machine: forward every call to a saved SSH machine's session
+# (herdr 0.9.1+). Empty means "the session this pane belongs to".
+MACHINE = []
+
+# Verbs that must split a pane. They need a *caller* pane to split from and
+# size against, which only exists in the session you are actually sitting in.
+NEEDS_LOCAL_PANE = {"run", "gate", "reviewer"}
+SUBCOMMANDS = ["status", "run", "wait", "gate", "read", "reviewer", "ask",
+               "notify", "close"]
+
+
+def require_herdr(args):
+    """Local calls must come from inside a pane; remote calls name their target.
+
+    The guard exists so a bare `herd` never drives whatever pane some other
+    client happens to have focused. `--machine` removes that ambiguity by
+    naming the session explicitly, so it does not need HERDR_ENV.
+    """
+    if MACHINE:
+        if args.cmd in NEEDS_LOCAL_PANE:
+            die(f"`herd {args.cmd}` splits a pane, which needs a caller pane in "
+                f"the session you are in — there is none on a remote machine. "
+                f"Use it from a pane on that machine, or pick an observe/steer "
+                f"verb: {', '.join(sorted(set(SUBCOMMANDS) - NEEDS_LOCAL_PANE))}.")
+        return
     if os.environ.get("HERDR_ENV") != "1":
-        die("not running inside a Herdr pane (HERDR_ENV != 1); refusing to "
-            "drive another client's session")
+        die("not running inside a Herdr pane (HERDR_ENV != 1). Either run this "
+            "from a Herdr pane, or name a machine: herd --machine <label> ...")
 
 
 def _run(args, check=True):
     """Run the herdr CLI. Returns (returncode, stdout, stderr)."""
-    proc = subprocess.run(["herdr", *args], capture_output=True, text=True)
+    proc = subprocess.run(["herdr", *MACHINE, *args], capture_output=True, text=True)
     if proc.returncode != 0 and check:
         die(f"herdr {' '.join(args)} failed: "
             f"{proc.stderr.strip() or proc.stdout.strip() or 'no output'}")
@@ -329,7 +356,11 @@ def split_command(argv):
 
 def main():
     p = argparse.ArgumentParser(prog="herd", add_help=True,
-                                description="drive the current Herdr session")
+                                description="drive a Herdr session")
+    p.add_argument("--machine", metavar="LABEL",
+                   help="run against a saved SSH machine's session instead of "
+                        "this one (herdr machine list). Observe/steer verbs "
+                        "only — splitting a pane needs a local caller pane.")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     s = sub.add_parser("status"); s.add_argument("--stale", type=int, default=120)
@@ -379,7 +410,9 @@ def main():
     flags, command = split_command(sys.argv[1:])
     args = p.parse_args(flags)
     args.command = command
-    require_herdr()
+    if args.machine:
+        MACHINE[:] = ["--machine", args.machine]
+    require_herdr(args)
     args.fn(args)
 
 
