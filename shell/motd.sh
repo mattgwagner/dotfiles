@@ -6,9 +6,9 @@
 # Sourced from BOTH ~/.zshrc and ~/.bashrc — keep it POSIX-compatible.
 #
 # The command and keybinding tables below are static text, not derived from
-# aliases.zsh or terminal/herdr.toml — update them by hand when either
-# changes. Keybindings must match terminal/herdr.toml, including which split
-# goes right vs down.
+# aliases.zsh, terminal/herd or terminal/herdr.toml — update them by hand when
+# any of those changes. Keybindings must match terminal/herdr.toml, including
+# which split goes right vs down.
 #
 # Agent-host reachability is read from a cache file, never probed live here.
 # The original reason was mDNS: `matts-mac-mini.local` resolution is NOT
@@ -82,6 +82,7 @@ _motd() {
 ├─ herd · one pane dispatches · runbook: terminal/AGENTS.md ─
 │ herd status [--stale M]  every agent; --machine <label> remote
 │ herd spawn <n> --task …  child agent in its own tab; no wait
+│ herd reviewer <n>        second agent in a pane; --task → inbox
 │ herd inbox [<n>]         what they reported back (* = unread)
 │ herd close --all         sweep panes + children this pane opened
 ├─ herdr · prefix ^A · caps = shift · ^A ? = all keys ──────
