@@ -83,3 +83,82 @@ and worked by absolute path.
 **`idle` is not `ready`.** Herdr reports an agent sitting at a login prompt as
 idle. If `herd ask` returns `agent_prompt_stalled`, `herd read <name>` before
 retrying — on this host `codex` is unauthenticated and does exactly that.
+
+## The driver pattern — one thread that dispatches, many that work
+
+The shape Matt actually wants: **one pane he talks to, which farms items out and
+watches them**, instead of opening a tab per item by hand.
+
+```bash
+herd spawn <name> --task "<brief>"   # child agent in its OWN TAB, fire-and-forget
+herd inbox                           # who reported back; * = unread
+herd inbox <name>                    # read one report in full
+herd status --stale 60               # every agent everywhere, not just mine
+herd close --all                     # sweep every pane and child this pane opened
+gsd --spawn <url>                    # a ticket straight into its own tab
+```
+
+Four rules make it hold. Each one is a failure that already happened.
+
+**Spawn tabs, never splits.** `pane split` carves the new pane out of the
+caller, so a driver that dispatches six children is 1/2^6 of the rectangle it
+started in — that is how a driver ends up asking a question in a box too narrow
+to show the question. `herd spawn` creates a *tab*, so the driver's geometry
+never changes. Measured: 215x75 before a spawn, 215x75 after spawning,
+dispatching, reading and closing. `herd run`/`gate`/`reviewer` still split, and
+should — they are for a command or a reviewer beside the work, not a herd.
+
+**The driver never waits.** `herd spawn` prompts without `--wait` on purpose. A
+driver blocked on a ten-minute child cannot take the next thing Matt says, which
+is the entire thing the pattern was supposed to buy. Poll with `herd inbox`.
+
+**Results come back as files.** Agent TUIs paint on the terminal's alternate
+screen, so `agent read` returns the tool-call rail plus "… N output lines
+hidden" and raising `--lines` recovers nothing. `herd spawn` appends a reporting
+contract to every brief: write Markdown to `~/.cache/herd/reports/<name>.md`,
+headline on line one, reply with the path. `herd inbox` reads the files.
+
+**A question does not look like a question.** Herdr classifies `blocked` from an
+approval or question *UI*. A child that ends its turn with prose asking
+something reads as plain `idle` — indistinguishable from twenty children that
+are simply done. The brief therefore tells it to raise
+`herdr notification show … --sound request`. `done` (unseen-idle, `*` in `herd
+status`) is the real completion signal; `idle` is not.
+
+### Spawn gotchas, verified 2026-09-17
+
+- A freshly spawned `claude` opens on the **trust-this-folder dialog**:
+  `agent start` returns `agent_not_ready` and the child parks there looking like
+  a hung launch. `herd spawn` answers that one dialog by its option text and
+  refuses to guess at any other blocked UI — an unrecognised one is left open,
+  because the pane is the evidence.
+- A just-started agent **lies about being ready**. It reports `idle` with
+  `interactive_ready: true` while the TUI is still painting; the paste lands
+  nowhere and `agent prompt` burns its five-second lifecycle budget and returns
+  `agent_prompt_stalled`. The first attempt after the trust dialog fails and the
+  second lands, so `herd spawn` retries three times with a 3s settle.
+- Report files are deleted on spawn. A stale report from a previous run of the
+  same name would read as this run's answer the moment `herd inbox` looked.
+
+### Context, not just panes
+
+The driver's context window is the bottleneck, not the pane count. It should
+read headlines and decisions, never transcripts — that is why the contract asks
+for a one-sentence first line. And this pattern is for **long-lived per-project
+work you will come back to**. For fan-out reads where you only want a
+conclusion, subagents inside one session are strictly better and cost no panes.
+
+### From the MacBook
+
+`work [host]` attaches to the same persistent session over SSH, so you are in a
+real pane on the agent host and **every verb above works unchanged**. That is
+the supported answer, not an ssh shim.
+
+`herd --machine <label>` runs a one-shot against a saved machine without
+attaching, but only the observe/steer verbs: `status`, `read`, `ask`, `notify`,
+`close`. `spawn` and `inbox` are refused there by design — both resolve paths
+(`--cwd`, the report file) against *this* host's home, so from a MacBook the
+brief would tell the child to write to `/Users/mattwagner/...` for work running
+on omarchy, and the driver would watch a path nothing ever writes. Saved
+machines are registered on the client side with `herdr machine add <ssh-target>
+--label <label>`.

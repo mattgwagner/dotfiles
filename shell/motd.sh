@@ -72,13 +72,18 @@ _motd() {
 ┌─ dotfiles ────────────────────────────────────────────────
 │ herdr                    this box + saved machines
 │ work [host]              full remote attach (^V image paste)
-│ herd status              every agent; --machine <label> for remote
 │ yolo                     claude, skip permissions + chrome
 │ gsd <url>                /get-shit-done via Claude
+│ gsd --spawn <url>        same, into its own tab; returns at once
 │ gsd --cursor <url>       same via Cursor (flip when quota is tight)
 │ gsd --foundry <url>      same via InContext Azure Foundry subscription
 │ use-incontext-foundry    open Claude Code with InContext Foundry
 │ use-sittadel-foundry     open Claude Code with Sittadel Foundry
+├─ herd · one pane dispatches · runbook: terminal/AGENTS.md ─
+│ herd status [--stale M]  every agent; --machine <label> remote
+│ herd spawn <n> --task …  child agent in its own tab; no wait
+│ herd inbox [<n>]         what they reported back (* = unread)
+│ herd close --all         sweep panes + children this pane opened
 ├─ herdr · prefix ^A · caps = shift · ^A ? = all keys ──────
 │ ^A c   new tab            ^A v  split right
 │ ^A w   workspace picker   ^A -  split down
