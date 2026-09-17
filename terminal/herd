@@ -26,8 +26,14 @@ Usage:
   herd read <target> [--lines N]   pane id or agent name
   herd spawn <name> --task "..."   child agent in its OWN TAB; fire-and-forget
   herd inbox [<name>]              what the children have reported back
-  herd reviewer <name> [--kind K]  sibling pane + agent; prints agent name
+  herd reviewer <name> [--kind K] [--task-file F]   sibling pane + agent;
+                                   given a task it carries the same reporting
+                                   contract as `spawn` and lands in `inbox`
   herd ask <name> <prompt> [--timeout MS]   prompt an agent, wait, print reply
+                                   NOTE: an agent TUI's prose does NOT come
+                                   back this way (alternate screen) — to get
+                                   findings, give `reviewer` a task and read
+                                   `herd inbox <name>`
   herd notify <title> [--body TEXT] [--sound done|request]
   herd tab-name <label> [--force]  name this tab after the task it is running
   herd close <pane|label|name>... | --all
@@ -421,12 +427,53 @@ def cmd_read(args):
 
 
 def cmd_reviewer(args):
+    """A second agent in a sibling pane — watchable, unlike a spawned tab.
+
+    With a task it is a `spawn` that lives in a pane: same brief tail, same
+    pre-cleared report, same `herd inbox`. Without one it only stands the agent
+    up and the caller drives it by hand — which is what `herd ask` is for, and
+    why `ask` cannot bring findings back: an agent TUI paints on the alternate
+    screen, so `agent read` returns the tool-call rail and nothing it said.
+    """
+    check_name(args.name)
+    task = args.task
+    if args.task_file:
+        if task is not None:
+            die("pass --task or --task-file, not both")
+        try:
+            task = Path(args.task_file).read_text()
+        except OSError as e:
+            die(f"cannot read {args.task_file}: {e}")
+    if task is not None and not task.strip():
+        die("the task is empty; drop the flag to start a bare reviewer")
+
+    # Clear the stale report BEFORE the pane exists: a die() after new_pane()
+    # strands an orphan pane that nothing will ever close.
+    report = open_report(args.name) if task is not None else None
+
     pane = new_pane(args.name)
     # A freshly split pane needs its shell at an interactive prompt before
     # `agent start` will accept it.
     time.sleep(1.5)
-    herdr("agent", "start", args.name, "--kind", args.kind, "--pane", pane)
+    started = herdr("agent", "start", args.name, "--kind", args.kind,
+                    "--pane", pane, check=False)
+    if started is None and not clear_trust_dialog(args.name):
+        # Left OPEN on purpose: an unrecognised blocked UI is the one case
+        # where the pane is the evidence.
+        die(f"{args.name} is blocked at startup and it is not the trust dialog — "
+            f"read it before answering: herd read {args.name} (pane {pane})", 2)
+
+    if task is None:
+        print(args.name)
+        return
+
+    if not send_brief(args.name, task, report, args.timeout):
+        die(f"{args.name} would not take the brief after 3 tries; its pane "
+            f"({pane}) is still open — read it, then herd close {args.name}", 2)
+
+    register_child(args.name, report, task, pane, kind=args.kind)
     print(args.name)
+    print(f"report: {report}", file=sys.stderr)
 
 
 def cmd_ask(args):
@@ -551,11 +598,21 @@ def cmd_close(args):
         die("nothing to close; usage: herd close <pane|label|name>... | --all")
 
     for name in children:
-        herdr("tab", "close", spawns[name]["tab"], check=False)
-        spawns.pop(name)
+        child = spawns.pop(name)
+        if child.get("tab"):
+            herdr("tab", "close", child["tab"], check=False)
+        elif child.get("pane"):
+            # A reviewer owns a pane, not a tab, and `new_pane` also recorded it
+            # in `mine`. Drop it from there so the pane path below does not then
+            # try to close it a second time and report it missing.
+            herdr("pane", "close", child["pane"], check=False)
+            mine.pop(child["pane"], None)
         print(name)
     if children:
         save_spawns(spawns)
+        save_mine(mine)
+        if args.all:
+            targets = [t for t in targets if t in mine]
 
     if not targets:
         return
@@ -599,6 +656,70 @@ from an approval or question *UI*, so a turn that ends on prose asking something
 looks exactly like a turn that finished. The notification is the only signal that
 crosses.
 """
+
+NAME_RE = r"[a-z][a-z0-9_-]{0,31}"
+
+
+def check_name(name):
+    """Agent names are also `inbox` and `close` keys, so reject early."""
+    if not re.fullmatch(NAME_RE, name):
+        die(f"{name!r} is not a legal agent name: {NAME_RE}")
+
+
+def open_report(name):
+    """The file this child will write its findings to, cleared first.
+
+    A stale report from a previous run of the same name would read as this
+    run's answer the moment `herd inbox` looked.
+    """
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    report = REPORTS / f"{name}.md"
+    if report.exists():
+        report.unlink()
+    return report
+
+
+def send_brief(name, task, report, timeout=120000):
+    """Hand a child its brief with the reporting contract appended.
+
+    Settles first, then retries the paste: a just-started agent lies about
+    being ready. Herdr reports `idle` with interactive_ready=true while the TUI
+    is still painting, the paste goes nowhere, and `agent prompt` burns its
+    five-second lifecycle-change budget and returns agent_prompt_stalled.
+    Measured on this host: the first attempt after startup fails, the second
+    lands.
+    """
+    st = agent_state(name) or {}
+    if st.get("agent_status") != "idle":
+        herdr("agent", "wait", name, "--timeout", str(timeout), check=False)
+
+    brief = task + BRIEF_TAIL.format(report=report, name=name)
+    for _ in range(3):
+        if herdr("agent", "prompt", name, brief, check=False) is not None:
+            return True
+        time.sleep(3)
+    return False
+
+
+def register_child(name, report, task, pane, tab=None, kind=None):
+    """Record a child so `herd inbox` can collect it and `herd close` can end it.
+
+    `tab` is None for a child that owns only a pane (a reviewer split off the
+    driver) — `cmd_close` branches on that, because closing a pane by its tab
+    id, or a tab by its pane id, silently does nothing.
+    """
+    spawns = load_spawns()
+    spawns[name] = {
+        "tab": tab,
+        "pane": pane,
+        "kind": kind,
+        "report": str(report),
+        "task": task[:200],
+        "spawned_at": time.time(),
+        "seen_at": 0,
+    }
+    save_spawns(spawns)
+
 
 # The dialog a freshly spawned `claude` opens on, and the option to land on.
 # Matched on the option text rather than the prose above it, which changes.
@@ -652,18 +773,12 @@ def clear_trust_dialog(name):
 def cmd_spawn(args):
     if not args.task:
         die('nothing to dispatch; usage: herd spawn <name> --task "<brief>"')
-    if not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", args.name):
-        die(f"{args.name!r} is not a legal agent name: [a-z][a-z0-9_-]{{0,31}}")
+    check_name(args.name)
     if agent_state(args.name):
         die(f"an agent named {args.name!r} is already live; pick another name "
             f"or close it (herd close {args.name})")
 
-    REPORTS.mkdir(parents=True, exist_ok=True)
-    report = REPORTS / f"{args.name}.md"
-    # A stale report from a previous run of the same name would read as this
-    # run's answer the moment `herd inbox` looked.
-    if report.exists():
-        report.unlink()
+    report = open_report(args.name)
 
     ws = args.workspace or os.environ.get("HERDR_WORKSPACE_ID")
     if not ws:
@@ -694,41 +809,17 @@ def cmd_spawn(args):
             f"read it before answering, then close it: herd read {args.name} "
             f"(pane {pane_id}, tab {tab_id})", 2)
 
-    st = agent_state(args.name) or {}
-    if st.get("agent_status") != "idle":
-        herdr("agent", "wait", args.name, "--timeout", str(args.timeout), check=False)
-
-    brief = args.task + BRIEF_TAIL.format(report=report, name=args.name)
     # Deliberately NOT --wait. The whole point of a driver is that it stays
     # available for the next thing Matt says; a driver blocked on a ten-minute
     # child is strictly worse than the tab he would have opened by hand.
-    #
-    # Retried because a just-started agent lies about being ready: Herdr reports
-    # `idle` with interactive_ready=true while the TUI is still painting, the
-    # paste goes nowhere, and `agent prompt` burns its five-second
-    # lifecycle-change budget and returns agent_prompt_stalled. Measured on this
-    # host: the first attempt after the trust dialog fails, the second lands.
-    for attempt in range(3):
-        if herdr("agent", "prompt", args.name, brief, check=False) is not None:
-            break
-        time.sleep(3)
-    else:
+    if not send_brief(args.name, args.task, report, args.timeout):
         herdr("tab", "close", tab_id, check=False)
         die(f"{args.name} would not take the brief after 3 tries; tab {tab_id} "
             f"closed. Retry, or start it by hand to watch it: "
             f"herdr tab create --workspace {ws} --cwd ~ --no-focus", 2)
 
-    spawns = load_spawns()
-    spawns[args.name] = {
-        "tab": tab_id,
-        "pane": pane_id,
-        "kind": args.kind,
-        "report": str(report),
-        "task": args.task[:200],
-        "spawned_at": time.time(),
-        "seen_at": 0,
-    }
-    save_spawns(spawns)
+    register_child(args.name, report, args.task, pane_id,
+                   tab=tab_id, kind=args.kind)
 
     print(f"{args.name}  tab {tab_id}  pane {pane_id}")
     print(f"report: {report}", file=sys.stderr)
@@ -862,6 +953,11 @@ def main():
     # use it, so a codex default silently parks the reviewer at a login prompt
     # that Herdr reports as `idle`.
     s.add_argument("--kind", default="cursor")
+    # A long brief typed onto a command line gets mangled by the shell, so the
+    # file form is the one to reach for.
+    s.add_argument("--task")
+    s.add_argument("--task-file")
+    s.add_argument("--timeout", type=int, default=120000)
     s.set_defaults(fn=cmd_reviewer)
 
     s = sub.add_parser("ask"); s.add_argument("name"); s.add_argument("prompt")

@@ -66,8 +66,8 @@ rather than re-learning per skill:
 herd status                      # every live agent, state, staleness
 herd gate <label> -- <cmd...>    # run, wait, exit with its code
 herd run  <label> -- <cmd...>    # start and leave running (dev servers)
-herd reviewer <name> --kind cursor
-herd ask <name> "<prompt>"
+herd reviewer <name> --kind cursor --task-file <f>   # reports back like spawn
+herd ask <name> "<prompt>"       # steer a running agent; cannot read findings
 herd notify "<title>" --body "<text>" --sound done|request
 ```
 
@@ -117,6 +117,13 @@ screen, so `agent read` returns the tool-call rail plus "… N output lines
 hidden" and raising `--lines` recovers nothing. `herd spawn` appends a reporting
 contract to every brief: write Markdown to `~/.cache/herd/reports/<name>.md`,
 headline on line one, reply with the path. `herd inbox` reads the files.
+
+This is a property of agent TUIs, not of tabs, so `herd reviewer` given a
+`--task`/`--task-file` carries the same contract into its sibling pane and
+lands in the same `herd inbox`. Do not hand-roll a scratch path for a verdict,
+and do not reach for `herd ask` to collect one: `ask` ends in the very
+`agent read` that cannot see it. `ask` is for *steering* an agent you are
+watching; a brief is for getting something back.
 
 **A question does not look like a question.** Herdr classifies `blocked` from an
 approval or question *UI*. A child that ends its turn with prose asking
