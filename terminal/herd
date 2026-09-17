@@ -27,7 +27,7 @@ Usage:
   herd reviewer <name> [--kind K]  sibling pane + agent; prints agent name
   herd ask <name> <prompt> [--timeout MS]   prompt an agent, wait, print reply
   herd notify <title> [--body TEXT] [--sound done|request]
-  herd close <pane>
+  herd close <pane|label|name>... | --all
 
   herd --machine <label> status     the same, against a saved SSH machine
                                     (herdr 0.9.1+; observe/steer verbs only)
@@ -116,35 +116,129 @@ def herdr_text(*args, check=True):
     return None if rc != 0 else out
 
 
-def split_direction():
+# What the caller keeps when it gives up room for its FIRST background pane.
+# Everything after that splits background panes, so this is the only time the
+# driver's rectangle ever changes.
+DRIVER_SHARE = 0.62
+
+# Below this the driver is not readable prose any more — at 27 columns a Claude
+# pane wraps mid-word and the question it is asking you is unreadable.
+DRIVER_FLOOR = (72, 18)
+
+STATE_DIR = Path.home() / ".cache" / "herd"
+
+
+def state_file():
+    """Panes this caller opened, so it can find them again and close them.
+
+    Keyed by the caller's pane: two agents sharing a workspace each own their
+    own background panes and must not close each other's.
+    """
+    return STATE_DIR / f"{os.environ.get('HERDR_PANE_ID', 'unknown')}.json"
+
+
+def load_mine():
+    try:
+        return json.loads(state_file().read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def save_mine(mine):
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    state_file().write_text(json.dumps(mine, indent=1, sort_keys=True))
+
+
+def split_dir(rect):
     """Wide panes split right, tall/narrow panes split down.
 
     Terminal cells are about twice as tall as wide, so compare width against
     doubled height rather than raw rows.
     """
+    return "right" if rect["width"] >= rect["height"] * 2 else "down"
+
+
+def new_pane(label=None):
+    """Split a sibling pane at $HOME, unfocused. Returns pane_id.
+
+    The caller is split at most ONCE. After that every background pane is
+    carved out of the largest background pane this caller already owns, so the
+    layout settles into "driver on one side, a stack of work on the other"
+    instead of halving the driver on every gate. Six splits off the caller is
+    a 27-column agent pane nobody can read — which is exactly how a driver
+    ends up asking a question in a box too small to show the question.
+    """
     layout = herdr("pane", "layout", "--current")["layout"]
+    rects = {p["pane_id"]: p["rect"] for p in layout["panes"]}
+    # `pane layout` carries geometry only — labels live on `pane list`.
+    labels = {p["pane_id"]: p.get("label")
+              for p in (herdr("pane", "list", check=False) or {}).get("panes", [])}
     # Measure the CALLER's pane, not the focused one. They are the same only
     # when the user happens to be looking at us; an agent doing background work
     # is by definition not focused, and sizing the split off whatever the UI
     # has focused picks the wrong direction exactly when it matters.
     me_id = os.environ.get("HERDR_PANE_ID") or layout["focused_pane_id"]
-    me = next((p for p in layout["panes"] if p["pane_id"] == me_id), None)
-    if not me:
-        return "right"
-    r = me["rect"]
-    return "right" if r["width"] >= r["height"] * 2 else "down"
 
+    mine = load_mine()
+    # Panes I opened that are still alive. A pane the user closed by hand, or
+    # one from a previous run of this session, is gone from the layout.
+    live = [pid for pid in mine if pid in rects and pid != me_id]
 
-def new_pane(label=None):
-    """Split a sibling pane at $HOME, unfocused. Returns pane_id."""
-    res = herdr("pane", "split", "--current",
-                "--direction", split_direction(),
+    if live:
+        host = max(live, key=lambda pid: rects[pid]["width"] * rects[pid]["height"])
+        ratio = []
+    else:
+        host = me_id
+        ratio = ["--ratio", str(DRIVER_SHARE)]
+        # Name the driver before it stops being the only pane. Work panes carry
+        # labels; an unlabelled box among them reads as leftover output, which
+        # is the wrong thing to think about the pane that will ask you a
+        # question when it is done.
+        if not labels.get(me_id):
+            herdr("pane", "rename", me_id, os.environ.get("HERD_DRIVER_LABEL", "driver"),
+                  check=False)
+        r = rects.get(me_id)
+        if r and (r["width"] * DRIVER_SHARE < DRIVER_FLOOR[0]
+                  or r["height"] * DRIVER_SHARE < DRIVER_FLOOR[1]):
+            print(f"herd: warning — this pane is already {r['width']}x{r['height']}; "
+                  f"splitting it again leaves it unreadable. Close stale panes "
+                  f"(herd close --all) or zoom this one to read it.", file=sys.stderr)
+
+    target = ["--current"] if host == me_id else ["--pane", host]
+    res = herdr("pane", "split", *target,
+                "--direction", split_dir(rects.get(host, {"width": 2, "height": 1})),
+                *ratio,
                 "--cwd", str(Path.home()),
                 "--no-focus")
     pane_id = res["pane"]["pane_id"]
     if label:
         herdr("pane", "rename", pane_id, label)
+
+    mine[pane_id] = label or pane_id
+    save_mine(mine)
     return pane_id
+
+
+def resolve_pane(target):
+    """pane id, pane label, or live agent name -> pane id.
+
+    `herdr pane close` takes only a pane id, and answers a label with
+    `pane_not_found` **at exit code 0**. Every other verb here is name-first,
+    so a caller naturally writes `herd close rev-51` — and used to get a
+    silent no-op that leaked the pane and shrank the driver.
+    """
+    panes = herdr("pane", "list")["panes"]
+    by_id = {p["pane_id"]: p for p in panes}
+    if target in by_id:
+        return target
+    for p in panes:
+        if p.get("label") == target:
+            return p["pane_id"]
+    agents = (herdr("agent", "list", check=False) or {}).get("agents", [])
+    for a in agents:
+        if a.get("agent_name") == target or a.get("name") == target:
+            return a["pane_id"]
+    return None
 
 
 # ---------------------------------------------------------------- subcommands
@@ -282,6 +376,9 @@ def cmd_gate(args):
 
     if args.close and rc == 0:
         herdr("pane", "close", pane)
+        mine = load_mine()
+        mine.pop(pane, None)
+        save_mine(mine)
     if args.notify:
         herdr("notification", "show",
               f"{args.label}: {'passed' if rc == 0 else 'FAILED'}",
@@ -338,7 +435,31 @@ def cmd_notify(args):
 
 
 def cmd_close(args):
-    herdr("pane", "close", args.pane)
+    """Close by pane id, label, or agent name — and say so when nothing matched."""
+    mine = load_mine()
+    if args.all:
+        targets = list(mine)
+        if not targets:
+            print("herd: nothing tracked to close", file=sys.stderr)
+            return
+    elif args.pane:
+        targets = args.pane
+    else:
+        die("nothing to close; usage: herd close <pane|label|name>... | --all")
+
+    missing = []
+    for t in targets:
+        pane_id = resolve_pane(t)
+        if pane_id is None:
+            mine.pop(t, None)
+            missing.append(t)
+            continue
+        herdr("pane", "close", pane_id)
+        mine.pop(pane_id, None)
+        print(pane_id)
+    save_mine(mine)
+    if missing:
+        die(f"no pane, label, or agent named: {', '.join(missing)}", 2)
 
 
 def split_command(argv):
@@ -404,7 +525,9 @@ def main():
     s.add_argument("--body"); s.add_argument("--sound", choices=["none", "done", "request"])
     s.set_defaults(fn=cmd_notify)
 
-    s = sub.add_parser("close"); s.add_argument("pane")
+    s = sub.add_parser("close"); s.add_argument("pane", nargs="*")
+    s.add_argument("--all", action="store_true",
+                   help="close every background pane this caller opened")
     s.set_defaults(fn=cmd_close)
 
     flags, command = split_command(sys.argv[1:])
