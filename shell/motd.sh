@@ -70,7 +70,9 @@ _motd() {
 
   cat <<EOF
 ┌─ dotfiles ────────────────────────────────────────────────
-│ work [host]              attach to Herdr on andy
+│ herdr                    this box + saved machines
+│ work [host]              full remote attach (^V image paste)
+│ herd status              every agent; --machine <label> for remote
 │ yolo                     claude, skip permissions + chrome
 │ gsd <url>                /get-shit-done via Claude
 │ gsd --cursor <url>       same via Cursor (flip when quota is tight)
