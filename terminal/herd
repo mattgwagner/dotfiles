@@ -27,6 +27,7 @@ Usage:
   herd reviewer <name> [--kind K]  sibling pane + agent; prints agent name
   herd ask <name> <prompt> [--timeout MS]   prompt an agent, wait, print reply
   herd notify <title> [--body TEXT] [--sound done|request]
+  herd tab-name <label> [--force]  name this tab after the task it is running
   herd close <pane|label|name>... | --all
 
   herd --machine <label> status     the same, against a saved SSH machine
@@ -61,7 +62,7 @@ MACHINE = []
 # size against, which only exists in the session you are actually sitting in.
 NEEDS_LOCAL_PANE = {"run", "gate", "reviewer"}
 SUBCOMMANDS = ["status", "run", "wait", "gate", "read", "reviewer", "ask",
-               "notify", "close"]
+               "notify", "tab-name", "close"]
 
 
 def require_herdr(args):
@@ -137,11 +138,15 @@ def state_file():
     return STATE_DIR / f"{os.environ.get('HERDR_PANE_ID', 'unknown')}.json"
 
 
-def load_mine():
+def read_json(path):
     try:
-        return json.loads(state_file().read_text())
+        return json.loads(path.read_text())
     except (OSError, ValueError):
-        return {}
+        return None
+
+
+def load_mine():
+    return read_json(state_file()) or {}
 
 
 def save_mine(mine):
@@ -434,6 +439,82 @@ def cmd_notify(args):
     herdr(*call)
 
 
+def tab_state_file(tab_id):
+    """The label THIS tooling last set on a tab.
+
+    Kept out of the pane state file on purpose: `herd close --all` walks that
+    dict as a list of pane ids, so a stray key there is a pane it would try to
+    close.
+    """
+    return STATE_DIR / f"{tab_id}.tab.json"
+
+
+def cmd_tab_name(args):
+    """Name the caller's tab after the work it is doing.
+
+    A sidebar of tabs called 1, 2, 3 says nothing about which one is shipping
+    which ticket, and an agent doing background work is in whichever tab Matt
+    left it in. Naming is cheap; naming over something is not, so this refuses
+    three cases rather than guessing:
+
+    - the caller's pane is not actually hosting an agent, which is what a
+      `claude --bg` session looks like: the work is detached and the pane went
+      back to a shell prompt, so the tab is Matt's, not the run's
+    - the tab holds a pane this caller did not open (someone else's work is
+      sharing it — the name would describe only half the tab)
+    - the tab already carries a label a human chose (anything but bare digits,
+      or the label this tooling last set here)
+
+    All three are non-fatal: the caller is doing something else and should not
+    stop because a cosmetic rename did not apply.
+    """
+    if MACHINE:
+        die("`herd tab-name` names the tab you are sitting in; there is no "
+            "caller tab on a remote machine.")
+    tab_id = os.environ.get("HERDR_TAB_ID")
+    if not tab_id:
+        die("no $HERDR_TAB_ID — not running inside a Herdr pane.")
+
+    tab = herdr("tab", "get", tab_id)["tab"]
+    current = tab.get("label") or ""
+    # An unnamed tab is labelled with its POSITION in the sidebar, which is not
+    # the `number` field (that is a monotonic id — tab 5 can be labelled "2").
+    # So "still default" is "the label is bare digits", and a human who really
+    # did name a tab "7" loses nothing worth keeping.
+    default = current == "" or current.isdigit()
+    ours = current == (read_json(tab_state_file(tab_id)) or {}).get("label")
+
+    if not (default or ours or args.force):
+        print(f"herd: tab {tab_id} is already named {current!r}; leaving it "
+              f"(--force to rename anyway)", file=sys.stderr)
+        return
+
+    mine = load_mine()
+    me_id = os.environ.get("HERDR_PANE_ID")
+    panes = herdr("pane", "list")["panes"]
+    me = next((p for p in panes if p["pane_id"] == me_id), None)
+    if me is not None and not me.get("agent") and not args.force:
+        print(f"herd: pane {me_id} is a shell, not an agent — this looks like a "
+              f"detached session, and its tab is not the run's to name",
+              file=sys.stderr)
+        return
+
+    strangers = [p["pane_id"] for p in panes
+                 if p["tab_id"] == tab_id
+                 and p["pane_id"] != me_id
+                 and p["pane_id"] not in mine]
+    if strangers and not args.force:
+        print(f"herd: tab {tab_id} also holds {', '.join(strangers)}, which this "
+              f"session did not open; leaving it {current!r} (--force to rename "
+              f"anyway)", file=sys.stderr)
+        return
+
+    herdr("tab", "rename", tab_id, args.label)
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    tab_state_file(tab_id).write_text(json.dumps({"label": args.label}))
+    print(args.label)
+
+
 def cmd_close(args):
     """Close by pane id, label, or agent name — and say so when nothing matched."""
     mine = load_mine()
@@ -524,6 +605,11 @@ def main():
     s = sub.add_parser("notify"); s.add_argument("title")
     s.add_argument("--body"); s.add_argument("--sound", choices=["none", "done", "request"])
     s.set_defaults(fn=cmd_notify)
+
+    s = sub.add_parser("tab-name"); s.add_argument("label")
+    s.add_argument("--force", action="store_true",
+                   help="rename even if the tab is named or shared")
+    s.set_defaults(fn=cmd_tab_name)
 
     s = sub.add_parser("close"); s.add_argument("pane", nargs="*")
     s.add_argument("--all", action="store_true",
