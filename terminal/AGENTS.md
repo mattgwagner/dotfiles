@@ -45,3 +45,41 @@ muscle memory and an optional hotkey binding.
 
 Preferences > Profiles > Keys > "Show this profile in the hotkey list", then
 assign a global shortcut under Preferences > Keys > Hotkey Window.
+
+## `herd` — driving the session from inside an agent pane
+
+`terminal/herd` (on PATH as `herd`) is the wrapper agents use to control Herdr.
+It exists because the raw `herdr` CLI has three sharp edges worth wrapping once
+rather than re-learning per skill:
+
+- `pane run` is silent on success and `pane read` answers in plain text, while
+  everything else answers in JSON. `herd` knows which is which.
+- `pane wait-output` searches a snapshot that **includes the command line you
+  just typed**, so waiting on a literal sentinel matches the echo of your own
+  command and returns before anything ran. `herd gate` waits on a marker whose
+  shape (`rc=` plus digits) cannot appear in the command text.
+- A command that calls `exit` takes the pane's shell down with it, so the
+  completion marker never prints and a failure is indistinguishable from a
+  hang. `herd gate` runs the command in a subshell.
+
+```bash
+herd status                      # every live agent, state, staleness
+herd gate <label> -- <cmd...>    # run, wait, exit with its code
+herd run  <label> -- <cmd...>    # start and leave running (dev servers)
+herd reviewer <name> --kind cursor
+herd ask <name> "<prompt>"
+herd notify "<title>" --body "<text>" --sound done|request
+```
+
+**The cwd invariant.** `herd` opens every pane at `$HOME` and nothing should
+change that. Claude project memory is keyed off cwd —
+`~/.claude/projects/-home-matt/memory` is a symlink into the vault, shared with
+Cursor — so a pane opened anywhere else writes to a store nothing else reads.
+This is also why nothing here uses `herdr worktree create`: it forces pane cwd
+to `~/.herdr/worktrees/<repo>/<branch>` and ignores `[terminal] new_cwd =
+"home"` (verified 2026-09-17). Worktrees are made with plain `git worktree add`
+and worked by absolute path.
+
+**`idle` is not `ready`.** Herdr reports an agent sitting at a login prompt as
+idle. If `herd ask` returns `agent_prompt_stalled`, `herd read <name>` before
+retrying — on this host `codex` is unauthenticated and does exactly that.

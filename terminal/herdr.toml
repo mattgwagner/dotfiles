@@ -68,3 +68,11 @@ delivery = "system"
 [theme]
 name = "solarized"
 auto_switch = false
+
+# Background work is read back out of pane scrollback (`herd read`), so a server
+# restart otherwise throws away the record of what a gate or dev server did.
+# Note this only recovers ordinary shell panes: an agent TUI paints on the
+# terminal's alternate screen and never enters scrollback at all, which is why
+# a reviewer is asked to write its findings to a file instead.
+[experimental]
+pane_history = true

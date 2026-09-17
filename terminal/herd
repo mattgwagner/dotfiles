@@ -1,0 +1,384 @@
+#!/usr/bin/env python3
+"""herd — drive the current Herdr session from inside an agent pane.
+
+Thin, opinionated wrapper over the `herdr` CLI for the handful of moves an
+agent actually makes: put a long command in a sibling pane, stand up a second
+agent to review, raise a toast, and see the whole herd at a glance.
+
+Two invariants this script exists to protect:
+
+1. **Panes are created at $HOME, always.** Claude project memory is keyed off
+   cwd — `~/.claude/projects/-home-matt/memory` is a symlink into the vault and
+   is shared with Cursor. A pane started anywhere else writes under
+   `-home-matt-<path>` and silently misses that store. Never pass a repo path
+   as a pane cwd; operate on worktrees by absolute path instead. This is also
+   why `herdr worktree create` is NOT used anywhere here: it forces pane cwd to
+   ~/.herdr/worktrees/<repo>/<branch> and ignores `[terminal] new_cwd = "home"`
+   (verified 2026-09-17).
+2. **The caller keeps focus.** Every split is --no-focus. Background work must
+   not yank the user out of what they are reading.
+
+Usage:
+  herd status [--stale MIN]        the herd: who is live, doing what, how stale
+  herd run <label> -- <cmd...>     sibling pane, named, runs cmd; prints pane id
+  herd gate <label> -- <cmd...>    run it, wait for it, exit with its code
+  herd wait <pane> --match TEXT | --regex PAT [--timeout MS]
+  herd read <target> [--lines N]   pane id or agent name
+  herd reviewer <name> [--kind K]  sibling pane + agent; prints agent name
+  herd ask <name> <prompt> [--timeout MS]   prompt an agent, wait, print reply
+  herd notify <title> [--body TEXT] [--sound done|request]
+  herd close <pane>
+
+Requires HERDR_ENV=1 — controlling the session from outside it targets whatever
+pane some other client happens to have focused.
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+TRANSCRIPTS = Path.home() / ".claude" / "projects" / "-home-matt"
+
+
+def die(msg, code=1):
+    print(f"herd: {msg}", file=sys.stderr)
+    sys.exit(code)
+
+
+def require_herdr():
+    if os.environ.get("HERDR_ENV") != "1":
+        die("not running inside a Herdr pane (HERDR_ENV != 1); refusing to "
+            "drive another client's session")
+
+
+def _run(args, check=True):
+    """Run the herdr CLI. Returns (returncode, stdout, stderr)."""
+    proc = subprocess.run(["herdr", *args], capture_output=True, text=True)
+    if proc.returncode != 0 and check:
+        die(f"herdr {' '.join(args)} failed: "
+            f"{proc.stderr.strip() or proc.stdout.strip() or 'no output'}")
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def herdr(*args, check=True):
+    """For commands that answer in JSON: returns the parsed .result.
+
+    Most control verbs do. The exceptions are `pane run` (silent on success)
+    and `pane read` / `agent read`, which write raw terminal text — use
+    herdr_text() for those.
+    """
+    rc, out, _ = _run(list(args), check=check)
+    if rc != 0:
+        return None
+    try:
+        return json.loads(out)["result"]
+    except (ValueError, KeyError):
+        if check:
+            die(f"herdr {' '.join(args)} returned unparseable output: {out[:200]}")
+        return None
+
+
+def herdr_text(*args, check=True):
+    """For commands that answer in plain text (or nothing at all)."""
+    rc, out, _ = _run(list(args), check=check)
+    return None if rc != 0 else out
+
+
+def split_direction():
+    """Wide panes split right, tall/narrow panes split down.
+
+    Terminal cells are about twice as tall as wide, so compare width against
+    doubled height rather than raw rows.
+    """
+    layout = herdr("pane", "layout", "--current")["layout"]
+    # Measure the CALLER's pane, not the focused one. They are the same only
+    # when the user happens to be looking at us; an agent doing background work
+    # is by definition not focused, and sizing the split off whatever the UI
+    # has focused picks the wrong direction exactly when it matters.
+    me_id = os.environ.get("HERDR_PANE_ID") or layout["focused_pane_id"]
+    me = next((p for p in layout["panes"] if p["pane_id"] == me_id), None)
+    if not me:
+        return "right"
+    r = me["rect"]
+    return "right" if r["width"] >= r["height"] * 2 else "down"
+
+
+def new_pane(label=None):
+    """Split a sibling pane at $HOME, unfocused. Returns pane_id."""
+    res = herdr("pane", "split", "--current",
+                "--direction", split_direction(),
+                "--cwd", str(Path.home()),
+                "--no-focus")
+    pane_id = res["pane"]["pane_id"]
+    if label:
+        herdr("pane", "rename", pane_id, label)
+    return pane_id
+
+
+# ---------------------------------------------------------------- subcommands
+
+def cmd_status(args):
+    agents = herdr("agent", "list")["agents"]
+    spaces = {w["workspace_id"]: w["label"]
+              for w in herdr("workspace", "list")["workspaces"]}
+    now = time.time()
+
+    rows = []
+    for a in agents:
+        sess = (a.get("agent_session") or {}).get("value")
+        age = None
+        if sess and a.get("agent") == "claude":
+            t = TRANSCRIPTS / f"{sess}.jsonl"
+            if t.exists():
+                age = (now - t.stat().st_mtime) / 60.0
+        rows.append({
+            "space": spaces.get(a["workspace_id"], a["workspace_id"]),
+            "pane": a["pane_id"],
+            "kind": a.get("agent", "?"),
+            "state": a.get("agent_status", "?"),
+            "title": a.get("terminal_title_stripped") or "",
+            "age": age,
+            "focused": a.get("focused", False),
+        })
+
+    order = {"blocked": 0, "done": 1, "working": 2, "idle": 3, "unknown": 4}
+    rows.sort(key=lambda r: (order.get(r["state"], 9), -(r["age"] or 0)))
+
+    mark = {"blocked": "!", "done": "*", "working": ">", "idle": ".", "unknown": "?"}
+    w = max((len(r["space"]) for r in rows), default=5)
+    print(f"{len(rows)} agents / {len(spaces)} workspaces\n")
+    for r in rows:
+        age = f"{r['age']:6.0f}m" if r["age"] is not None else "     --"
+        flag = "@" if r["focused"] else " "
+        stale = "  <-- stale" if (args.stale and r["age"] and r["age"] > args.stale
+                                  and r["state"] == "idle") else ""
+        print(f" {mark.get(r['state'],'?')}{flag} {r['space']:<{w}}  {r['kind']:<7}"
+              f" {r['state']:<8} {age}  {r['title'][:46]}{stale}")
+    print("\n  ! blocked   * done (unseen)   > working   . idle   @ focused")
+    if args.stale:
+        print(f"  stale = idle with no transcript write in {args.stale}m "
+              f"(claude panes only; cursor has no readable transcript here)")
+
+
+def cmd_run(args):
+    # Validate before splitting: a die() after new_pane() strands an orphan
+    # pane that nothing will ever close.
+    if not args.command:
+        die("nothing to run; usage: herd run <label> -- <cmd...>")
+    pane = new_pane(args.label)
+    herdr_text("pane", "run", pane, " ".join(args.command))
+    print(pane)
+
+
+def cmd_wait(args):
+    call = ["pane", "wait-output", args.pane]
+    call += ["--regex", args.regex] if args.regex else ["--match", args.match]
+    call += ["--source", "recent-unwrapped"]
+    if args.timeout:
+        call += ["--timeout", str(args.timeout)]
+    res = herdr(*call, check=False)
+    if res is None:
+        die("wait timed out, pattern never appeared, or the pane is gone", 2)
+    # wait-output already carries the snapshot it matched against.
+    print((res.get("read") or {}).get("text", ""))
+
+
+def cmd_gate(args):
+    """Run a command in a sibling pane, wait for it to finish, report rc.
+
+    Two traps this works around:
+
+    * `pane wait-output` searches a snapshot that includes the command line
+      just typed, so a plain --match on a sentinel matches the echo of the
+      command itself and returns before anything ran. The guard is a marker
+      whose *shape* cannot appear in the command text: the command carries a
+      literal `rc=$?`, the pattern demands digits.
+    * A command that calls `exit` would take the pane's shell down with it and
+      the marker would never print, which is indistinguishable from a hang.
+      Running it in a subshell contains that.
+    """
+    cmd = args.command
+    if not cmd:
+        die("nothing to run; usage: herd gate <label> -- <cmd...>")
+
+    token = f"HERD_{re.sub(r'[^A-Z0-9]', '_', args.label.upper())}_{os.urandom(3).hex().upper()}"
+    pane = new_pane(args.label)
+    herdr_text("pane", "run", pane, f'( {" ".join(cmd)} ); echo "{token} rc=$?"')
+
+    res = herdr("pane", "wait-output", pane,
+                "--regex", rf"{token} rc=[0-9]+",
+                "--source", "recent-unwrapped",
+                "--lines", str(args.lines),
+                "--timeout", str(args.timeout), check=False)
+    if res is None:
+        alive = herdr("pane", "get", pane, check=False) is not None
+        why = (f"did not finish within {args.timeout}ms"
+               if alive else "pane died before reporting a result")
+        print(f"-- {args.label}: {why}"
+              f"{' (pane ' + pane + ' left open)' if alive else ''}", file=sys.stderr)
+        sys.exit(2)
+
+    text = (res.get("read") or {}).get("text", "")
+
+    rc = 1
+    for line in reversed(text.splitlines()):
+        if line.startswith(token) and "rc=" in line:
+            tail = line.split("rc=", 1)[1].strip()
+            if tail.isdigit():
+                rc = int(tail)
+            break
+
+    # Trim shell noise. The command text echoes twice — once as the pane
+    # renders it, once after the prompt — so anchor on the LAST echo that is
+    # not the completion marker, and keep only what the command actually
+    # printed. Trailing prompt redraws go too.
+    lines = text.splitlines()
+    marker = re.compile(rf"^{token} rc=[0-9]+\s*$")
+    last_echo = max((i for i, l in enumerate(lines)
+                     if token in l and not marker.match(l.strip())), default=-1)
+    body_lines = lines[last_echo + 1:] if last_echo >= 0 else lines
+    body_lines = [l for l in body_lines if token not in l]
+    while body_lines and not body_lines[-1].strip().rstrip("❯$%#").strip():
+        body_lines.pop()
+    if body_lines and body_lines[-1].strip().rstrip("❯$%#").strip() == "~":
+        body_lines.pop()
+    body = "\n".join(body_lines).strip()
+    if args.chars and len(body) > args.chars:
+        body = "... [trimmed]\n" + body[-args.chars:]
+    print(body)
+    print(f"\n-- {args.label}: exit {rc} (pane {pane})", file=sys.stderr)
+
+    if args.close and rc == 0:
+        herdr("pane", "close", pane)
+    if args.notify:
+        herdr("notification", "show",
+              f"{args.label}: {'passed' if rc == 0 else 'FAILED'}",
+              "--body", f"exit {rc}",
+              "--sound", "done" if rc == 0 else "request")
+    sys.exit(rc)
+
+
+def cmd_read(args):
+    for group in ("agent", "pane"):
+        out = herdr_text(group, "read", args.target,
+                         "--source", "recent-unwrapped",
+                         "--lines", str(args.lines), check=False)
+        if out is not None:
+            print(out, end="")
+            return
+    die(f"could not read {args.target} as an agent name or pane id")
+
+
+def cmd_reviewer(args):
+    pane = new_pane(args.name)
+    # A freshly split pane needs its shell at an interactive prompt before
+    # `agent start` will accept it.
+    time.sleep(1.5)
+    herdr("agent", "start", args.name, "--kind", args.kind, "--pane", pane)
+    print(args.name)
+
+
+def cmd_ask(args):
+    # Prompting an agent that is mid-turn queues the text as a follow-up in
+    # some TUIs (cursor) rather than steering it, so the answer you read back
+    # is the *previous* turn's. Settle first.
+    st = herdr("agent", "get", args.name, check=False) or {}
+    st = st.get("agent", st)
+    if st.get("agent_status") == "working":
+        herdr("agent", "wait", args.name, "--timeout", str(args.timeout), check=False)
+
+    call = ["agent", "prompt", args.name, args.prompt, "--wait"]
+    if args.timeout:
+        call += ["--timeout", str(args.timeout)]
+    herdr(*call)
+    print(herdr_text("agent", "read", args.name,
+                     "--source", "recent-unwrapped",
+                     "--lines", str(args.lines)), end="")
+
+
+def cmd_notify(args):
+    call = ["notification", "show", args.title]
+    if args.body:
+        call += ["--body", args.body]
+    if args.sound:
+        call += ["--sound", args.sound]
+    herdr(*call)
+
+
+def cmd_close(args):
+    herdr("pane", "close", args.pane)
+
+
+def split_command(argv):
+    """Peel `-- <cmd...>` off the end so argparse never sees the command.
+
+    argparse.REMAINDER swallows any flag that follows the first positional,
+    which silently turns `herd gate x --close -- npm test` into a command of
+    "--close -- npm test". Splitting by hand keeps flags on either side.
+    """
+    if "--" not in argv:
+        return argv, []
+    i = argv.index("--")
+    return argv[:i], argv[i + 1:]
+
+
+def main():
+    p = argparse.ArgumentParser(prog="herd", add_help=True,
+                                description="drive the current Herdr session")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("status"); s.add_argument("--stale", type=int, default=120)
+    s.set_defaults(fn=cmd_status)
+
+    s = sub.add_parser("run"); s.add_argument("label")
+    s.set_defaults(fn=cmd_run)
+
+    s = sub.add_parser("wait"); s.add_argument("pane")
+    g = s.add_mutually_exclusive_group(required=True)
+    g.add_argument("--match"); g.add_argument("--regex")
+    s.add_argument("--timeout", type=int, default=600000)
+    s.set_defaults(fn=cmd_wait)
+
+    s = sub.add_parser("gate"); s.add_argument("label")
+    s.add_argument("--timeout", type=int, default=900000)
+    s.add_argument("--lines", type=int, default=400)
+    s.add_argument("--chars", type=int, default=4000,
+                   help="trim the reported tail to this many characters (0 = all)")
+    s.add_argument("--close", action="store_true", help="close the pane if it passed")
+    s.add_argument("--notify", action="store_true", help="raise a toast with the result")
+    s.set_defaults(fn=cmd_gate)
+
+    s = sub.add_parser("read"); s.add_argument("target")
+    s.add_argument("--lines", type=int, default=200)
+    s.set_defaults(fn=cmd_read)
+
+    s = sub.add_parser("reviewer"); s.add_argument("name")
+    s.add_argument("--kind", default="codex")
+    s.set_defaults(fn=cmd_reviewer)
+
+    s = sub.add_parser("ask"); s.add_argument("name"); s.add_argument("prompt")
+    s.add_argument("--timeout", type=int, default=600000)
+    s.add_argument("--lines", type=int, default=300)
+    s.set_defaults(fn=cmd_ask)
+
+    s = sub.add_parser("notify"); s.add_argument("title")
+    s.add_argument("--body"); s.add_argument("--sound", choices=["none", "done", "request"])
+    s.set_defaults(fn=cmd_notify)
+
+    s = sub.add_parser("close"); s.add_argument("pane")
+    s.set_defaults(fn=cmd_close)
+
+    flags, command = split_command(sys.argv[1:])
+    args = p.parse_args(flags)
+    args.command = command
+    require_herdr()
+    args.fn(args)
+
+
+if __name__ == "__main__":
+    main()

@@ -7,6 +7,7 @@
 #   - shell/foundry.sh (Claude Code Azure Foundry subscription switching)
 #   - shell/motd.sh    (startup banner — commands + live context)
 #   - terminal/herdr.toml -> ~/.config/herdr/config.toml (Herdr keybindings)
+#   - terminal/herd       -> ~/.local/bin/herd (agent-facing herdr wrapper)
 #
 # Everything in shell/ is POSIX-compatible and sourced by BOTH zsh and bash;
 # shell-specific bits sit behind $ZSH_VERSION / $BASH_VERSION guards. That is
@@ -109,6 +110,10 @@ fi
 # real file, so an existing hand-written config must be moved aside first.
 if command -v herdr >/dev/null 2>&1; then
   link_file "$DOTFILES_ROOT/terminal/herdr.toml" "$HOME/.config/herdr/config.toml"
+  # `herd` — the agent-facing wrapper over the herdr CLI. Agents call it by
+  # name from skills (get-shit-done), so it has to be on PATH, not just in the
+  # repo.
+  link_file "$DOTFILES_ROOT/terminal/herd" "$HOME/.local/bin/herd"
   if herdr server reload-config >/dev/null 2>&1; then
     success "reloaded the running Herdr server"
   else
