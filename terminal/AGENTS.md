@@ -91,7 +91,9 @@ watches them**, instead of opening a tab per item by hand.
 
 ```bash
 herd spawn <name> --task "<brief>"   # child agent in its OWN TAB, fire-and-forget
-herd inbox                           # who reported back; * = unread
+herd adopt <name> --brief            # fold in a child herd did not start (gsd --foundry)
+herd inbox                           # this pane's children; ! needs you, * unread
+herd inbox --all                     # every child on the box, whoever dispatched it
 herd inbox <name>                    # read one report in full
 herd status --stale 60               # every agent everywhere, not just mine
 herd close --all                     # sweep every pane and child this pane opened
@@ -112,6 +114,26 @@ should — they are for a command or a reviewer beside the work, not a herd.
 driver blocked on a ten-minute child cannot take the next thing Matt says, which
 is the entire thing the pattern was supposed to buy. Poll with `herd inbox`.
 
+**One file per child, carrying all three messages.** A child has three things to
+say — that it is alive, what it found, and what it needs — and only one channel
+that crosses. So they share it. The brief has the child stamp `status:` lines as
+it goes, replace the file with its result when it finishes, and end on a
+`## BLOCKED:` line if it has to stop and ask. `herd inbox` tells those apart by
+reading the file:
+
+```
+ ! gsd-781   blocked    3m  Cap the backfill at 5 or 50?      <- needs an answer
+ * gsd-782   exited    12m  Shipped b7745ba: fit-score now…   <- unread result
+ x gsd-783   exited    41m  started — reading the issue       <- died mid-flight
+ - gsd-785   working    1m  worktree up, tests green          <- alive, progressing
+```
+
+That `x` row is the one that did not exist before: a child that went down
+without reporting used to be indistinguishable from one still working, because
+the file stayed empty either way. The age column is time since the child last
+wrote — a heartbeat, not a runtime — so a `-` row that has not moved in an hour
+is a wedged agent, and says so.
+
 **Results come back as files.** Agent TUIs paint on the terminal's alternate
 screen, so `agent read` returns the tool-call rail plus "… N output lines
 hidden" and raising `--lines` recovers nothing. `herd spawn` appends a reporting
@@ -125,12 +147,17 @@ and do not reach for `herd ask` to collect one: `ask` ends in the very
 `agent read` that cannot see it. `ask` is for *steering* an agent you are
 watching; a brief is for getting something back.
 
-**A question does not look like a question.** Herdr classifies `blocked` from an
-approval or question *UI*. A child that ends its turn with prose asking
-something reads as plain `idle` — indistinguishable from twenty children that
-are simply done. The brief therefore tells it to raise
-`herdr notification show … --sound request`. `done` (unseen-idle, `*` in `herd
-status`) is the real completion signal; `idle` is not.
+**A question does not look like a question, and a toast does not reach the
+driver.** Herdr classifies `blocked` from an approval or question *UI*. A child
+that ends its turn with prose asking something reads as plain `idle` —
+indistinguishable from twenty children that are simply done. So the brief asks
+for two things, because they land in two different places: `herdr notification
+show … --sound request` reaches **Matt at his desk**, and a `## BLOCKED:` last
+line reaches **the driver**, which is the only one that can re-dispatch. There
+is no third option — `herdr notification` is show-only, no list and no read
+verb (verified 2026-09-18 on 0.9.1), so nothing a child raises as a toast can
+ever be polled. `done` (unseen-idle, `*` in `herd status`) is the real
+completion signal; `idle` is not.
 
 ### Spawn gotchas, verified 2026-09-17
 
@@ -144,8 +171,22 @@ status`) is the real completion signal; `idle` is not.
   nowhere and `agent prompt` burns its five-second lifecycle budget and returns
   `agent_prompt_stalled`. The first attempt after the trust dialog fails and the
   second lands, so `herd spawn` retries three times with a 3s settle.
-- Report files are deleted on spawn. A stale report from a previous run of the
-  same name would read as this run's answer the moment `herd inbox` looked.
+- Report files are **rewritten** on spawn, with a dispatch stamp. Deleted,
+  because a stale report from a previous run of the same name would read as
+  this run's answer the moment `herd inbox` looked. Stamped, because an absent
+  file and an idle child used to look identical in the list.
+- **`herd inbox` is one inbox, not one per pane.** What has been read is
+  recorded once in `~/.cache/herd/seen.json`; `--all` reads the reports
+  directory rather than the dispatching pane's registry, so a child outlives
+  the driver that sent it. Before this, a driver pane dying orphaned its
+  children silently — 31 empty registries and 9 uncollected reports on the
+  first heavy day.
+- **`herd adopt <name>`** folds in a child `herd spawn` could not start:
+  a `gsd --foundry` tab (`--spawn` and `--foundry` are mutually exclusive), or
+  one whose driver pane is gone. `--brief` also hands it the reporting contract
+  it never got — queued, so it applies to the turn it is already in. It does
+  not claim the child's tab unless you pass `--own-tab`; a tab this pane did
+  not open is not its to close.
 
 ### Which harness gets the work — dispatch against the quota you have
 

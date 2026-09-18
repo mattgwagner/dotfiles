@@ -77,10 +77,10 @@ NEEDS_LOCAL_PANE = {"run", "gate", "reviewer"}
 # the brief tells the child to write somewhere the driver will never look.
 # Attaching (`work`) puts you in a real pane on that machine and every verb
 # works unchanged, so that is the supported answer rather than an ssh shim.
-NEEDS_LOCAL_FS = {"spawn", "inbox"}
+NEEDS_LOCAL_FS = {"spawn", "inbox", "adopt"}
 
 SUBCOMMANDS = ["status", "run", "wait", "gate", "read", "reviewer", "ask",
-               "notify", "tab-name", "close", "spawn", "inbox"]
+               "notify", "tab-name", "close", "spawn", "adopt", "inbox"]
 
 
 def require_herdr(args):
@@ -644,18 +644,44 @@ REPORTS = STATE_DIR / "reports"
 BRIEF_TAIL = """
 
 --- reporting back (herd) ---
-Write your complete result as Markdown to {report}, then reply with only that path.
-Make the first line a one-sentence headline: that line is what the driver sees.
-If you need Matt to decide something before you can finish, write what you have so
-far to that file, then run:
+Your report file is {report}. It is the only channel that reaches the driver, and
+it carries three different things: that you are alive, what you found, and what
+you need. All three are that one file.
+
+ALIVE. Before you start work, write one line to it:
+
+  status: started — <one sentence on what you are about to do>
+
+and append another `status:` line each time you finish a meaningful step. The
+driver reads the file's modification time as your heartbeat: a file that has not
+moved in an hour is indistinguishable from a wedged agent, so a long step gets a
+line when it begins, not only when it ends.
+
+FOUND. When you finish, replace the file with your complete result as Markdown
+and reply with only that path. Make the first line a one-sentence headline: that
+line is what the driver sees in its list.
+
+NEED. If you need Matt to decide something before you can finish, write what you
+have so far to the file, make its LAST line:
+
+  ## BLOCKED: <your question in one sentence>
+
+then run:
 
   herdr notification show "{name} needs you" --body "<your question>" --sound request
 
-and stop. Do not leave the question only in your reply — Herdr classifies `blocked`
+and stop. Both are required and they reach different places: the marker is what
+the *driver* sees in `herd inbox`, the notification is what reaches Matt at his
+desk. Do not leave the question only in your reply — Herdr classifies `blocked`
 from an approval or question *UI*, so a turn that ends on prose asking something
-looks exactly like a turn that finished. The notification is the only signal that
-crosses.
+looks exactly like a turn that finished.
 """
+
+# What a child puts on its last line when it stops to ask something. The
+# driver cannot learn this any other way: `herdr notification` is show-only
+# (no list, no read verb, verified 2026-09-18 on 0.9.1), so a toast reaches
+# Matt's desk and nothing reaches the pane that dispatched the work.
+BLOCKED_MARKER = "## BLOCKED:"
 
 NAME_RE = r"[a-z][a-z0-9_-]{0,31}"
 
@@ -667,15 +693,21 @@ def check_name(name):
 
 
 def open_report(name):
-    """The file this child will write its findings to, cleared first.
+    """The file this child will write its findings to, cleared and stamped.
 
-    A stale report from a previous run of the same name would read as this
-    run's answer the moment `herd inbox` looked.
+    Cleared because a stale report from a previous run of the same name would
+    read as this run's answer the moment `herd inbox` looked.
+
+    Stamped because "no file" and "no progress" are different facts and the
+    old empty-until-finished file could not tell them apart: a `-` row meant
+    both "dispatched forty seconds ago" and "wedged for two hours". With a
+    line in it from the moment of dispatch, the file's mtime is the child's
+    heartbeat and the age column means something from the start.
     """
     REPORTS.mkdir(parents=True, exist_ok=True)
     report = REPORTS / f"{name}.md"
-    if report.exists():
-        report.unlink()
+    stamp = time.strftime("%Y-%m-%d %H:%M")
+    report.write_text(f"status: dispatched {stamp} — no word from {name} yet\n")
     return report
 
 
@@ -743,11 +775,18 @@ def save_spawns(spawns):
 
 
 def agent_state(name):
-    agents = (herdr("agent", "list", check=False) or {}).get("agents", [])
-    for a in agents:
-        if (a.get("agent_name") or a.get("name")) == name:
-            return a
-    return None
+    """One agent by name, or None if nothing answers to it.
+
+    Must be `agent get`, not a scan of `agent list`: the list payload carries
+    no name field at all (verified 2026-09-18, herdr 0.9.1) — `name` appears
+    only in `agent get`'s own result. Scanning the list therefore matched
+    nothing, ever, which silently disarmed both callers: `cmd_spawn`'s
+    duplicate-name guard never fired, so a second child of the same name
+    clobbered the first one's report, and `cmd_inbox` read every child as
+    exited and pruned the ones that had not written a report yet.
+    """
+    res = herdr("agent", "get", name, check=False)
+    return (res or {}).get("agent")
 
 
 def clear_trust_dialog(name):
@@ -825,60 +864,200 @@ def cmd_spawn(args):
     print(f"report: {report}", file=sys.stderr)
 
 
-def headline(path):
-    """The one line of a report worth putting in a list.
+def cmd_adopt(args):
+    """Fold an agent someone else started into this pane's inbox.
 
-    The brief asks for a one-sentence headline on line one, and children
-    routinely open with `# Title` instead — observed on the first two-child run.
-    A title restates the task the driver already knows, so prefer the first
-    line of actual prose and fall back to the heading only if there is none.
+    Two children can't use `herd spawn` and so have never been collectable.
+    A `gsd --foundry` ticket is one: `--spawn` and `--foundry` are mutually
+    exclusive, because `herd spawn` calls `herdr agent start` directly and
+    there is no hook to inject Foundry's env vars before the agent process
+    launches, so client-billed work is opened by hand. The other is a child
+    whose driver pane died with its registry.
+
+    Adopting registers it, and with --brief hands it the reporting contract it
+    never got.
+    """
+    check_name(args.name)
+    st = agent_state(args.name)
+    if st is None:
+        die(f"no live agent named {args.name!r} — herd status to see what is "
+            f"running, and note an unnamed pane has no name to adopt "
+            f"(herdr agent rename <target> {args.name})", 2)
+
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    report = REPORTS / f"{args.name}.md"
+    if not report.exists():
+        stamp = time.strftime("%Y-%m-%d %H:%M")
+        report.write_text(f"status: adopted {stamp} — started outside herd\n")
+
+    # tab stays None without --own-tab: `herd close --all` closes a child's
+    # whole tab, and a tab this pane did not open is not its to take down.
+    register_child(args.name, report,
+                   args.task or st.get("terminal_title_stripped", ""),
+                   st.get("pane_id"),
+                   tab=st.get("tab_id") if args.own_tab else None,
+                   kind=st.get("agent"))
+
+    if args.brief:
+        # Prompting a working agent queues the text instead of steering it,
+        # which is what we want: the contract should apply to the report it
+        # writes at the end of the turn it is already in, not interrupt it.
+        herdr("agent", "prompt", args.name,
+              BRIEF_TAIL.format(report=report, name=args.name).strip(),
+              check=False)
+
+    print(f"{args.name}  pane {st.get('pane_id')}  tab {st.get('tab_id')}")
+    print(f"report: {report}", file=sys.stderr)
+
+
+def reports_on_disk():
+    """Every report file on the box, whoever dispatched it."""
+    try:
+        return sorted(REPORTS.glob("*.md"))
+    except OSError:
+        return []
+
+
+def read_report(path):
+    """Classify a child's report file: the state it implies, and the one line
+    worth showing for it.
+
+    The file is the only channel that crosses, so it carries all three kinds of
+    message and the driver has to tell them apart:
+
+      `## BLOCKED:` on a line    the child stopped to ask something
+      nothing but `status:`      still working; the last one is its progress
+      anything else              a real report; line one is the headline
     """
     try:
         lines = [l.strip() for l in Path(path).read_text().splitlines()]
     except OSError:
-        return ""
-    prose = next((l for l in lines if l and not l.startswith(("#", "```", "-", "*", "|"))), "")
+        return "silent", ""
+
+    blocked = [l for l in lines if l.startswith(BLOCKED_MARKER)]
+    if blocked:
+        return "blocked", blocked[-1][len(BLOCKED_MARKER):].strip()
+
+    body = [l for l in lines if l]
+    if not body:
+        return "silent", ""
+    if all(l.startswith("status:") for l in body):
+        return "working", body[-1][len("status:"):].strip()
+
+    # The brief asks for a one-sentence headline on line one, and children
+    # routinely open with `# Title` instead — observed on the first two-child
+    # run. A title restates the task the driver already knows, so prefer the
+    # first line of actual prose and fall back to the heading only if there is
+    # none. `status:` lines are skipped too: a child that appended its result
+    # under its progress log would otherwise be listed by its first heartbeat.
+    prose = next((l for l in body
+                  if not l.startswith(("#", "```", "-", "*", "|", "status:"))), "")
     if prose:
-        return prose
-    return next((l.lstrip("#").strip() for l in lines if l.strip("# ")), "")
+        return "reported", prose
+    heading = next((l.lstrip("#").strip() for l in body if l.strip("# ")), "")
+    return ("reported", heading) if heading else ("silent", "")
+
+
+def seen_file():
+    """When each child's report was last read — one record, every driver.
+
+    This used to be `seen_at` inside the per-pane spawn registry, which made
+    "have I read this" a property of the pane that happened to dispatch it: a
+    report read from one pane still showed unread in another, and a driver that
+    lost its pane lost the record with it. There is one inbox, so there is one
+    record of what has been read out of it.
+    """
+    return STATE_DIR / "seen.json"
+
+
+def mark_seen(name):
+    seen = read_json(seen_file()) or {}
+    seen[name] = time.time()
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    seen_file().write_text(json.dumps(seen, indent=1, sort_keys=True))
+
+
+# What the driver should look at first, and the character that says why.
+# Ranked by what it costs to miss the row, which is not the same as the agent's
+# own status: a finished child is `exited` to Herdr, and an unread result from
+# one is the entire reason the inbox exists — it has to outrank a sibling that
+# is merely still working. Sorting on agent status alone buried it.
+RANK_BLOCKED, RANK_UNREAD, RANK_DIED, RANK_WORKING, RANK_QUIET = range(5)
+MARKS = {RANK_BLOCKED: "!", RANK_UNREAD: "*", RANK_DIED: "x",
+         RANK_WORKING: "-", RANK_QUIET: " "}
+
+
+def rank(r):
+    if r["state"] == "blocked":
+        return RANK_BLOCKED
+    if r["rstate"] == "reported":
+        return RANK_UNREAD if r["new"] else RANK_QUIET
+    # Nothing but heartbeats, and nothing alive to add to them: the child went
+    # down mid-flight. Silent until now — it looked identical to a live one.
+    if r["state"] == "exited":
+        return RANK_DIED
+    return RANK_WORKING
 
 
 def cmd_inbox(args):
     spawns = load_spawns()
-    if not spawns:
-        print("herd: nothing dispatched from this pane", file=sys.stderr)
-        return
 
     if args.name:
-        if args.name not in spawns:
-            die(f"{args.name!r} was not dispatched from this pane; "
-                f"known: {', '.join(sorted(spawns)) or 'none'}", 2)
-        path = Path(spawns[args.name]["report"])
+        # Resolved off disk when this pane did not dispatch it, so a report
+        # outlives the driver that asked for it.
+        s = spawns.get(args.name, {})
+        path = Path(s["report"]) if s.get("report") else REPORTS / f"{args.name}.md"
         if not path.exists():
-            die(f"{args.name} has not written {path} yet", 2)
+            known = sorted({p.stem for p in reports_on_disk()} | set(spawns))
+            die(f"no report from {args.name!r}"
+                + (f"; known: {', '.join(known)}" if known else ""), 2)
         print(path.read_text(), end="")
-        spawns[args.name]["seen_at"] = time.time()
-        save_spawns(spawns)
+        mark_seen(args.name)
+        return
+
+    # --all is a view over the reports directory rather than this pane's
+    # registry: it picks up children whose driver pane is gone, and the
+    # `gsd --foundry` tabs that never had a registry entry to begin with.
+    if args.all:
+        names = sorted({p.stem for p in reports_on_disk()} | set(spawns))
+    else:
+        names = sorted(spawns)
+
+    if not names:
+        where = "on this machine" if args.all else "from this pane"
+        hint = "" if args.all else " (herd inbox --all for every child)"
+        print(f"herd: nothing dispatched {where}{hint}", file=sys.stderr)
         return
 
     now = time.time()
+    seen = read_json(seen_file()) or {}
     rows, gone = [], []
-    for name, s in sorted(spawns.items()):
-        st = agent_state(name)
-        path = Path(s["report"])
+    for name in names:
+        s = spawns.get(name, {})
+        path = Path(s["report"]) if s.get("report") else REPORTS / f"{name}.md"
         mtime = path.stat().st_mtime if path.exists() else 0
+        st = agent_state(name)
+        rstate, line = read_report(path)
+
+        # Nothing live and nothing written: a child that never got off the
+        # ground. Only this pane's registry is ours to prune — `--all` is a
+        # read over the reports directory and owns none of what it lists.
         if st is None and not mtime:
-            gone.append(name)
+            if not args.all:
+                gone.append(name)
             continue
+
         rows.append({
             "name": name,
-            # An agent that exited but left a report is still useful; one that
-            # left neither is the row above, pruned.
-            "state": (st or {}).get("agent_status", "exited"),
-            "new": bool(mtime and mtime > s.get("seen_at", 0)),
+            # The report outranks the pane. A child that wrote `## BLOCKED:`
+            # and stopped reads as plain `idle` to Herdr, which classifies
+            # `blocked` from an approval UI this one never opened.
+            "state": ("blocked" if rstate == "blocked"
+                      else (st or {}).get("agent_status", "exited")),
+            "new": bool(mtime and mtime > seen.get(name, 0)),
             "age": (now - mtime) / 60.0 if mtime else None,
-            "line": headline(path) if mtime else s.get("task", ""),
-            "reported": bool(mtime),
+            "line": line or s.get("task", ""),
+            "rstate": rstate,
         })
 
     for name in gone:
@@ -891,13 +1070,14 @@ def cmd_inbox(args):
         return
 
     w = max(len(r["name"]) for r in rows)
-    order = {"blocked": 0, "done": 1, "working": 2, "idle": 3}
-    rows.sort(key=lambda r: (not r["new"], order.get(r["state"], 9)))
+    rows.sort(key=lambda r: (rank(r), r["name"]))
     for r in rows:
-        mark = "*" if r["new"] else (" " if r["reported"] else "-")
+        mark = MARKS[rank(r)]
         age = f"{r['age']:5.0f}m" if r["age"] is not None else "    --"
         print(f" {mark} {r['name']:<{w}}  {r['state']:<8} {age}  {r['line'][:64]}")
-    print("\n  * unread report   (blank) read   - no report yet")
+    print("\n  ! needs an answer   * unread result   x died without reporting   "
+          "- working   (blank) read")
+    print("  age = since the child last wrote; that is its heartbeat, not its runtime")
     print(f"  herd inbox <name> to read one in full; reports in {REPORTS}")
 
 
@@ -985,7 +1165,17 @@ def main():
                         "handing it the brief")
     s.set_defaults(fn=cmd_spawn)
 
+    s = sub.add_parser("adopt"); s.add_argument("name")
+    s.add_argument("--task", help="what it is working on, for the inbox list")
+    s.add_argument("--brief", action="store_true",
+                   help="also send it the reporting contract it never got")
+    s.add_argument("--own-tab", action="store_true",
+                   help="let herd close take down its whole tab, not just its pane")
+    s.set_defaults(fn=cmd_adopt)
+
     s = sub.add_parser("inbox"); s.add_argument("name", nargs="?")
+    s.add_argument("--all", action="store_true",
+                   help="every child on the box, not just this pane's")
     s.set_defaults(fn=cmd_inbox)
 
     s = sub.add_parser("close"); s.add_argument("pane", nargs="*")
