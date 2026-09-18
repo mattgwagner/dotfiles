@@ -1069,14 +1069,31 @@ def cmd_inbox(args):
         print("herd: nothing dispatched from this pane", file=sys.stderr)
         return
 
+    # --all is every report ever written, and a collected one is finished
+    # business: 80 of them buried the 15 rows that still wanted something on
+    # the first run. Hidden by default there, counted so the view never lies
+    # about what it is not showing, and --read brings them back. The pane-
+    # scoped list stays whole — it is small, and a read sibling is context.
+    quiet = [r for r in rows if rank(r) == RANK_QUIET]
+    if args.all and not args.read:
+        rows = [r for r in rows if rank(r) != RANK_QUIET]
+    if not rows:
+        print(f"herd: nothing outstanding; {len(quiet)} collected "
+              f"(herd inbox --all --read to see them)", file=sys.stderr)
+        return
+
     w = max(len(r["name"]) for r in rows)
     rows.sort(key=lambda r: (rank(r), r["name"]))
     for r in rows:
         mark = MARKS[rank(r)]
         age = f"{r['age']:5.0f}m" if r["age"] is not None else "    --"
         print(f" {mark} {r['name']:<{w}}  {r['state']:<8} {age}  {r['line'][:64]}")
+    hidden = len(quiet) if (args.all and not args.read) else 0
     print("\n  ! needs an answer   * unread result   x died without reporting   "
-          "- working   (blank) read")
+          "- working" + ("" if hidden else "   (blank) read"))
+    if hidden:
+        print(f"  {hidden} collected report{'s' if hidden != 1 else ''} hidden "
+              f"— herd inbox --all --read to see them")
     print("  age = since the child last wrote; that is its heartbeat, not its runtime")
     print(f"  herd inbox <name> to read one in full; reports in {REPORTS}")
 
@@ -1176,6 +1193,8 @@ def main():
     s = sub.add_parser("inbox"); s.add_argument("name", nargs="?")
     s.add_argument("--all", action="store_true",
                    help="every child on the box, not just this pane's")
+    s.add_argument("--read", action="store_true",
+                   help="with --all, also list reports already collected")
     s.set_defaults(fn=cmd_inbox)
 
     s = sub.add_parser("close"); s.add_argument("pane", nargs="*")

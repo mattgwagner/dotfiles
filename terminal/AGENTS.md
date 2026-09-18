@@ -93,7 +93,8 @@ watches them**, instead of opening a tab per item by hand.
 herd spawn <name> --task "<brief>"   # child agent in its OWN TAB, fire-and-forget
 herd adopt <name> --brief            # fold in a child herd did not start (gsd --foundry)
 herd inbox                           # this pane's children; ! needs you, * unread
-herd inbox --all                     # every child on the box, whoever dispatched it
+herd inbox --all                     # every outstanding child on the box
+herd inbox --all --read              # ...including the ones already collected
 herd inbox <name>                    # read one report in full
 herd status --stale 60               # every agent everywhere, not just mine
 herd close --all                     # sweep every pane and child this pane opened
@@ -175,6 +176,14 @@ completion signal; `idle` is not.
   because a stale report from a previous run of the same name would read as
   this run's answer the moment `herd inbox` looked. Stamped, because an absent
   file and an idle child used to look identical in the list.
+- **`--all` lists what is outstanding, not everything ever written.** A
+  collected report is finished business, and the reports directory is
+  append-only — 80 of them buried the 15 rows that still wanted something the
+  first time it ran. They are hidden under `--all` and counted in the footer,
+  so the view never lies about what it is not showing; `--read` brings them
+  back. A `!` row is never hidden: reading a question does not answer it. The
+  pane-scoped list stays whole, because it is small and a read sibling is
+  context.
 - **`herd inbox` is one inbox, not one per pane.** What has been read is
   recorded once in `~/.cache/herd/seen.json`; `--all` reads the reports
   directory rather than the dispatching pane's registry, so a child outlives
