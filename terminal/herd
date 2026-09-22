@@ -24,7 +24,10 @@ Usage:
   herd gate <label> -- <cmd...>    run it, wait for it, exit with its code
   herd wait <pane> --match TEXT | --regex PAT [--timeout MS]
   herd read <target> [--lines N]   pane id or agent name
-  herd spawn <name> --task "..."   child agent in its OWN TAB; fire-and-forget
+  herd spawn <name> --task "..." [--for <repo>]
+                                   child agent in its OWN TAB; fire-and-forget.
+                                   --for routes it to the workspace that owns
+                                   <repo> rather than the caller's.
   herd inbox [<name>]              what the children have reported back
   herd reviewer <name> [--kind K] [--task-file F]   sibling pane + agent;
                                    given a task it carries the same reporting
@@ -809,6 +812,42 @@ def clear_trust_dialog(name):
     return True
 
 
+WS_MATCH_FLOOR = 5
+
+
+def ws_slug(label):
+    """Workspace labels are prose ("Exec Upgrades"); repo names are not."""
+    return re.sub(r"[^a-z0-9]", "", (label or "").lower())
+
+
+def workspace_for(slug):
+    """The workspace a repo belongs in. Returns (workspace, tied_labels).
+
+    Labels and repo names agree on a *prefix* far more often than they agree
+    outright -- "InContext Solutions" hosts `incontext-vaa`, "Exec Upgrades"
+    hosts `execupgrades-support` -- so score on the longest common prefix of
+    the de-punctuated strings and take the unique winner. The floor keeps a
+    short label from claiming half the org by accident, and a tie is not a
+    match: two plausible homes means the caller's own workspace is the honest
+    answer, said out loud, rather than a coin flip.
+    """
+    want = ws_slug(slug)
+    if len(want) < WS_MATCH_FLOOR:
+        return None, []
+    scored = []
+    for w in herdr("workspace", "list")["workspaces"]:
+        n = len(os.path.commonprefix([want, ws_slug(w.get("label"))]))
+        if n >= WS_MATCH_FLOOR:
+            scored.append((n, w))
+    if not scored:
+        return None, []
+    best = max(n for n, _ in scored)
+    winners = [w for n, w in scored if n == best]
+    if len(winners) > 1:
+        return None, [w.get("label") or w["workspace_id"] for w in winners]
+    return winners[0], []
+
+
 def cmd_spawn(args):
     if not args.task:
         die('nothing to dispatch; usage: herd spawn <name> --task "<brief>"')
@@ -819,7 +858,28 @@ def cmd_spawn(args):
 
     report = open_report(args.name)
 
-    ws = args.workspace or os.environ.get("HERDR_WORKSPACE_ID")
+    # Where the work belongs beats where the driver happens to be sitting. A
+    # driver dispatches from whatever workspace Matt left it in, and an
+    # inherited workspace is how a ticket ends up filed under someone else's
+    # client. --for names the repo; an explicit --workspace still wins.
+    ws = args.workspace
+    if not ws and args.route:
+        hit, tied = workspace_for(args.route)
+        here = os.environ.get("HERDR_WORKSPACE_ID")
+        if hit:
+            ws = hit["workspace_id"]
+            if here and here != ws:
+                print(f"herd: {args.route} belongs to workspace "
+                      f"{hit.get('label')!r} ({ws}), not this pane's — "
+                      f"spawning {args.name} there", file=sys.stderr)
+        elif tied:
+            print(f"herd: {args.route} matches {' and '.join(tied)} equally "
+                  f"well; spawning in this pane's workspace instead",
+                  file=sys.stderr)
+        else:
+            print(f"herd: no workspace matches {args.route}; spawning in this "
+                  f"pane's workspace", file=sys.stderr)
+    ws = ws or os.environ.get("HERDR_WORKSPACE_ID")
     if not ws:
         die("no workspace to spawn into; pass --workspace or run from a pane")
 
@@ -828,12 +888,20 @@ def cmd_spawn(args):
     # started in — which is how a driver ends up asking a question in a box too
     # narrow to show the question. A tab leaves the driver untouched and gives
     # the child a full-size pane to work in.
+    label = args.label or args.name
     res = herdr("tab", "create", "--workspace", ws,
                 "--cwd", str(Path.home()),
-                "--label", args.label or args.name,
+                "--label", label,
                 "--no-focus")
     tab_id = res["tab"]["tab_id"]
     pane_id = res["root_pane"]["pane_id"]
+
+    # Record the label as THIS TOOLING'S, not a human's. A spawned child's
+    # first act is `herd tab-name <repo>-<n>` once scope resolves, and
+    # tab-name refuses to overwrite a name it did not set -- so without this
+    # line the dispatch-time guess reads as Matt's choice and sticks forever.
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    tab_state_file(tab_id).write_text(json.dumps({"label": label}))
 
     # A freshly created pane needs its shell at an interactive prompt before
     # `agent start` will accept it.
@@ -1177,6 +1245,9 @@ def main():
     s.add_argument("--label", help="tab label (default: the agent name)")
     s.add_argument("--workspace", help="spawn into this workspace "
                                        "(default: the caller's)")
+    s.add_argument("--for", dest="route", metavar="SLUG",
+                   help="route into the workspace whose label matches this "
+                        "repo/project slug, instead of the caller's")
     s.add_argument("--timeout", type=int, default=60000,
                    help="how long to wait for the child to reach idle before "
                         "handing it the brief")
