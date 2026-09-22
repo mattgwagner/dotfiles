@@ -256,3 +256,147 @@ brief would tell the child to write to `/Users/mattwagner/...` for work running
 on omarchy, and the driver would watch a path nothing ever writes. Saved
 machines are registered on the client side with `herdr machine add <ssh-target>
 --label <label>`.
+
+## Browsers on this box
+
+There are **three** browser paths available from omarchy. Two run here and need
+no Mac; one drives Matt's MacBook. Pick by the job, not by habit.
+
+Verified 2026-09-22. The old assumption — "the only browser is the one on the
+Mac, reached over the tailnet" — is no longer true, and
+`~/.claude/hooks/browser-localhost-guard.sh` was rewritten to say so.
+
+### Which path for which job
+
+| Job | Use | Why |
+|---|---|---|
+| Run e2e specs | Playwright (`npm run test:e2e`) | Already a devDependency; asserts, retries, fixtures |
+| Read/click a page, judge copy, check a flow | `agent-browser` | Text out, no display, localhost works, real clicks |
+| Need Matt's logged-in Chrome, or a human watching | claude-in-chrome + tailnet | Only path with his profile/cookies |
+
+**Default to `agent-browser` for exploratory verification.** It is the one that
+replaces "load this page and read it cold".
+
+### Path 1 — Playwright (the test path)
+
+Already installed per-repo. The browser binaries are versioned separately from
+the npm package, so after a Playwright bump the cache goes stale and every spec
+fails with `Executable doesn't exist at .../chromium_headless_shell-<N>`. That
+is not a broken test:
+
+```bash
+npm run test:e2e:install     # downloads the matching build (~300MB, ~2min)
+npm run test:e2e             # boots its own dev server via playwright.config.ts
+```
+
+Do **not** add `--with-deps`. It has hung for 25-35 minutes with zero output
+(see `~/vault/Resources/Tooling Gotchas/Lessons.md`). Plain `install` is fine
+here — Arch already has the shared libraries, despite Playwright warning that
+the OS is "not officially supported" and pulling an ubuntu24.04 fallback build.
+
+If a dev server is already up, skip the managed one:
+`E2E_SKIP_WEBSERVER=1 npx playwright test`.
+
+### Path 2 — agent-browser (the exploratory path)
+
+A terminal-first CLI built for agents: compact **text** output instead of
+screenshots, so it is cheap on context. Headless, no display server needed.
+
+```bash
+npm install -g --allow-scripts=agent-browser agent-browser
+agent-browser install          # fetches its own Chrome into ~/.agent-browser
+```
+
+The `--allow-scripts` flag is required — npm here blocks postinstall by default,
+and a plain `npm install -g agent-browser` silently leaves it unable to launch.
+
+```bash
+agent-browser read http://localhost:3000/          # page as readable prose
+agent-browser snapshot                             # a11y tree with @refs
+agent-browser open  http://localhost:3000/login
+agent-browser fill  @e5 'you@example.com'
+agent-browser click @e4
+agent-browser get url
+agent-browser close --all                          # always, when done
+```
+
+**Selectors:** CSS works, but Playwright-isms do not — `button:has-text("...")`
+returns "Element not found". Run `snapshot`, then act on the `@eN` refs. That is
+the intended flow and it is more stable than guessing selectors.
+
+`agent-browser skills get core --full` prints the full command reference.
+
+**Screenshots, and how an agent actually sees them:**
+
+```bash
+agent-browser screenshot /tmp/shot.png
+```
+
+then open it with the **Read tool**, which renders PNGs into the transcript.
+Writing a file to disk is not verification — an agent that only reports "the
+screenshot was saved" has checked nothing. Read it back and say what is on it.
+
+**What text cannot tell you.** `read` flattens layout: nav items run together
+("ProductPricingWays to work"), and spacing, contrast and overlap are invisible.
+On a real check, `snapshot` caught that a button was *enabled* while the
+screenshot showed it rendered grey enough to read as disabled. Neither view
+alone was right. **For a UX judgement, take the screenshot too.**
+
+### Path 3 — headed Chromium on the Hyprland session
+
+Hyprland runs on seat0/tty1 and its socket is `/run/user/1000/wayland-1`. Agent
+shells land in a tty context with no `WAYLAND_DISPLAY`, which makes the box look
+headless; it is not. To attach a real window:
+
+```bash
+export XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISPLAY=wayland-1
+setsid chromium --ozone-platform=wayland --user-data-dir=/tmp/prof <url> &
+export HYPRLAND_INSTANCE_SIGNATURE=$(ls /run/user/1000/hypr | head -1)
+hyprctl clients        # confirm the window exists
+```
+
+**Check whether anyone can see it first:**
+
+```bash
+hyprctl monitors | head -3        # "Monitor FALLBACK" = virtual output
+for c in /sys/class/drm/card*-*/status; do echo "$c $(cat $c)"; done
+```
+
+As of 2026-09-22 every DRM connector reads `disconnected` and Hyprland is on a
+FALLBACK output — **no physical screen is attached**, so a headed window renders
+where nobody is looking and buys nothing over headless. Re-check rather than
+assume; if a monitor is plugged in this becomes the path where Matt can watch.
+
+Two standing costs regardless: it depends on the graphical session (if Hyprland
+dies, so does your browser), and a window popping up unannounced is intrusive
+if Matt is at the machine. **Prefer headless unless a human is actually
+watching.**
+
+### Path 4 — claude-in-chrome (the MacBook, unchanged)
+
+`mcp__claude-in-chrome__*` drives Chrome on Matt's MacBook, not this box. It is
+still the right tool when you need his logged-in profile or his eyes on the
+page. `localhost` there means *the Mac's* localhost — the guard hook denies it
+and hands back both the local commands and the tailnet URL.
+
+```bash
+tailscale serve --bg 3000
+# https://omarchy.tailacf9b6.ts.net/...    (undo: tailscale serve reset)
+```
+
+Next.js dev also needs the tailnet origin in `allowedDevOrigins`
+(`NEXT_DEV_ORIGINS` in `.env.local`) or the page renders but never hydrates.
+
+### Cleaning up
+
+Leaving browsers running is the norm failure here — a stray Playwright
+`chrome-headless-shell` from an inline node script was found still alive after
+**8 days**, its parent long gone.
+
+```bash
+agent-browser close --all
+ps -eo pid,etimes,args | awk '/chrom/ && !/type=/'   # inspect before killing
+```
+
+Kill strays **by PID**. Never `pkill -f chrom` — the pattern matches your own
+command line and the agent harness's `claude --chrome` processes.
