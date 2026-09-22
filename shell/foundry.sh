@@ -33,7 +33,7 @@ use-incontext-foundry() {
     unset AZURE_RESOURCE_NAME
     export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5"
     export ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4-5"
-    export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5-5"
     export ENABLE_PROMPT_CACHING_1H=1
     export CLAUDE_CODE_ENABLE_AUTO_MODE=1
     echo "Switched to InContext Azure Foundry subscription (via APIM gateway)"
