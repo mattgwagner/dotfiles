@@ -96,6 +96,8 @@ herd inbox                           # this pane's children; ! needs you, * unre
 herd inbox --all                     # every outstanding child on the box
 herd inbox --all --read              # ...including the ones already collected
 herd inbox <name>                    # read one report in full
+herd watch [<name>...] [--all]       # block until a child's state actually
+                                      # changes, then print its inbox line
 herd status --stale 60               # every agent everywhere, not just mine
 herd close --all                     # sweep every pane and child this pane opened
 gsd --spawn <url>                    # a ticket straight into its own tab
@@ -113,7 +115,9 @@ should — they are for a command or a reviewer beside the work, not a herd.
 
 **The driver never waits.** `herd spawn` prompts without `--wait` on purpose. A
 driver blocked on a ten-minute child cannot take the next thing Matt says, which
-is the entire thing the pattern was supposed to buy. Poll with `herd inbox`.
+is the entire thing the pattern was supposed to buy. Don't poll `herd inbox` by
+hand for that either — background `herd watch` instead (see below) and let the
+driver's own harness ping it when something actually changes.
 
 **One file per child, carrying all three messages.** A child has three things to
 say — that it is alive, what it found, and what it needs — and only one channel
@@ -159,6 +163,25 @@ is no third option — `herdr notification` is show-only, no list and no read
 verb (verified 2026-09-18 on 0.9.1), so nothing a child raises as a toast can
 ever be polled. `done` (unseen-idle, `*` in `herd status`) is the real
 completion signal; `idle` is not.
+
+**`herd watch` closes the gap between those two — for the driver's own
+session, not Matt's desktop.** `herdr agent wait <target> [--until STATUS]...
+[--timeout MS]` is a real block against Herdr's live socket state, not
+scrollback polling: it returns the instant a target's `agent_status` changes
+(or immediately, if it is already sitting in a matched state), and fails in
+single-digit milliseconds — not a hang — against a target that no longer
+exists. `herd watch [<name>...] [--all]` threads one of those waits per child
+(default: everything this pane spawned/adopted) and returns after the first
+one changes, printing its `inbox`-style line so no follow-up call is needed.
+Run it through the caller's own backgrounding — a detached shell job, a
+harness's `run_in_background` — instead of re-running `herd status`/`herd
+inbox` by hand: the point is that *nothing* has to poll, because the wait
+itself is the notification. Verified 2026-09-22 against four real live
+children (readerful-1230/821, execupgrades-support-73, rev-73) from a session
+backgrounding the call — each state change surfaced as its own completion
+event, unprompted. Also answers a target by pane id, so it tracks a
+`gsd --foundry` child too (see below) even though that path never gets a
+`herd spawn` registry entry.
 
 ### Spawn gotchas, verified 2026-09-17
 

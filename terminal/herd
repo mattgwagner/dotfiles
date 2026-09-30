@@ -28,6 +28,15 @@ Usage:
                                    child agent in its OWN TAB; fire-and-forget.
                                    --for routes it to the workspace that owns
                                    <repo> rather than the caller's.
+  herd watch [<name>...] [--all] [--timeout MS]
+                                   block until a child's Herdr state actually
+                                   changes (idle/done/blocked), then print its
+                                   inbox line. Default: every child this pane
+                                   spawned/adopted, return after the FIRST one
+                                   changes. Run this via a backgrounded shell
+                                   call so the wait doesn't hold your own turn
+                                   hostage — it is a real state-change wait
+                                   against the socket API, not a poll.
   herd inbox [<name>]              what the children have reported back
   herd reviewer <name> [--kind K] [--task-file F]   sibling pane + agent;
                                    given a task it carries the same reporting
@@ -51,9 +60,11 @@ pane some other client happens to have focused.
 import argparse
 import json
 import os
+import queue
 import re
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -80,10 +91,10 @@ NEEDS_LOCAL_PANE = {"run", "gate", "reviewer"}
 # the brief tells the child to write somewhere the driver will never look.
 # Attaching (`work`) puts you in a real pane on that machine and every verb
 # works unchanged, so that is the supported answer rather than an ssh shim.
-NEEDS_LOCAL_FS = {"spawn", "inbox", "adopt"}
+NEEDS_LOCAL_FS = {"spawn", "inbox", "adopt", "watch"}
 
 SUBCOMMANDS = ["status", "run", "wait", "gate", "read", "reviewer", "ask",
-               "notify", "tab-name", "close", "spawn", "adopt", "inbox"]
+               "notify", "tab-name", "close", "spawn", "adopt", "inbox", "watch"]
 
 
 def require_herdr(args):
@@ -1199,6 +1210,80 @@ def cmd_inbox(args):
     print(f"  herd inbox <name> to read one in full; reports in {REPORTS}")
 
 
+def _watch_result(name, wait_res):
+    """Classify one child the same way `inbox` does, once its Herdr state has
+    actually changed (or `agent wait` gave up: timeout, or the agent is gone).
+    """
+    spawns = load_spawns()
+    s = spawns.get(name, {})
+    path = Path(s["report"]) if s.get("report") else REPORTS / f"{name}.md"
+    rstate, line = read_report(path)
+    if wait_res is None:
+        st = agent_state(name)
+        state = "blocked" if rstate == "blocked" else (st or {}).get("agent_status", "exited")
+        return {"name": name, "state": state, "line": line or s.get("task", ""),
+                "note": "wait timed out or the agent is gone"}
+    agent_status = (wait_res.get("agent") or {}).get("agent_status", "unknown")
+    state = "blocked" if rstate == "blocked" else agent_status
+    return {"name": name, "state": state, "line": line or s.get("task", "")}
+
+
+def cmd_watch(args):
+    """Block until a watched child's Herdr state changes, then report it.
+
+    `herdr agent wait <name>` is a real wait against the socket API's live
+    agent state (idle/working/blocked/done), not scrollback polling — it
+    returns the instant the target's state changes (or immediately, if it is
+    already sitting in a matched state). Threading one call per target and
+    taking whichever finishes first turns a batch of spawned children into a
+    single blocking call: run it with the caller's own backgrounding (a
+    detached shell job, `run_in_background`, etc.) instead of re-running
+    `herd status` / `herd inbox` by hand to see if anything moved.
+
+    Threads are daemons and results cross a Queue rather than
+    ThreadPoolExecutor, on purpose: the pool's default atexit join would block
+    process exit on every still-running wait, not just the one that answered
+    first — defeating "return after the first."
+    """
+    spawns = load_spawns()
+    names = args.name or sorted(spawns)
+    if not names:
+        print("herd: nothing dispatched from this pane to watch "
+              "(herd spawn first, or name a target: herd watch <name>...)",
+              file=sys.stderr)
+        return
+
+    # No upfront liveness check. `herdr agent wait` on a target that is
+    # already gone fails in single-digit milliseconds rather than hanging —
+    # confirmed 2026-09-22, a sibling driver's `rev-73` had exited between
+    # `herd status` and this call — so a dead name resolves through the same
+    # worker path as a live one instead of `die()`-ing the whole batch over
+    # one stale name. `_watch_result` turns that fast failure into a normal
+    # "exited" row.
+    results = queue.Queue()
+
+    def worker(name):
+        res = herdr("agent", "wait", name, "--timeout", str(args.timeout), check=False)
+        results.put(_watch_result(name, res))
+
+    for name in names:
+        threading.Thread(target=worker, args=(name,), daemon=True).start()
+
+    want = len(names) if args.all else 1
+    rows = [results.get() for _ in range(want)]
+
+    w = max(len(r["name"]) for r in rows)
+    for r in rows:
+        note = f"  ({r['note']})" if r.get("note") else ""
+        print(f" {r['name']:<{w}}  {r['state']:<8}  {r['line'][:64]}{note}")
+
+    if not args.all:
+        remaining = sorted(set(names) - {r["name"] for r in rows})
+        if remaining:
+            print(f"\n  still watching: {', '.join(remaining)} "
+                  f"(re-run herd watch to keep waiting on them)", file=sys.stderr)
+
+
 def split_command(argv):
     """Peel `-- <cmd...>` off the end so argparse never sees the command.
 
@@ -1293,6 +1378,17 @@ def main():
     s.add_argument("--own-tab", action="store_true",
                    help="let herd close take down its whole tab, not just its pane")
     s.set_defaults(fn=cmd_adopt)
+
+    s = sub.add_parser("watch")
+    s.add_argument("name", nargs="*",
+                   help="children to watch (default: everything this pane "
+                        "spawned/adopted)")
+    s.add_argument("--all", action="store_true",
+                   help="wait for every target instead of returning after "
+                        "the first one changes")
+    s.add_argument("--timeout", type=int, default=14400000,
+                   help="give up on a target after this many ms (default 4h)")
+    s.set_defaults(fn=cmd_watch)
 
     s = sub.add_parser("inbox"); s.add_argument("name", nargs="?")
     s.add_argument("--all", action="store_true",
