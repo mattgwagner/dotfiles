@@ -31,7 +31,7 @@ use-incontext-foundry() {
     unset ANTHROPIC_API_KEY
     unset ANTHROPIC_FOUNDRY_RESOURCE
     unset AZURE_RESOURCE_NAME
-    export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5-5"
     export ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4-5"
     export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5-5"
     export ENABLE_PROMPT_CACHING_1H=1
@@ -49,9 +49,9 @@ use-sittadel-foundry() {
     fi
     export CLAUDE_CODE_USE_FOUNDRY=1
     export ANTHROPIC_FOUNDRY_API_KEY="$SITTADEL_FOUNDRY_API_KEY"
-    export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-4-6"
+    export ANTHROPIC_DEFAULT_SONNET_MODEL="claude-sonnet-5-5"
     export ANTHROPIC_DEFAULT_HAIKU_MODEL="claude-haiku-4-5"
-    export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-4-7"
+    export ANTHROPIC_DEFAULT_OPUS_MODEL="claude-opus-5-5"
     export ANTHROPIC_FOUNDRY_RESOURCE=foundry-sittadel-prod
     export AZURE_RESOURCE_NAME=foundry-sittadel-prod
     export ENABLE_PROMPT_CACHING_1H=1
