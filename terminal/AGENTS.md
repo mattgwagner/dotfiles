@@ -172,6 +172,12 @@ completion signal; `idle` is not.
   nowhere and `agent prompt` burns its five-second lifecycle budget and returns
   `agent_prompt_stalled`. The first attempt after the trust dialog fails and the
   second lands, so `herd spawn` retries three times with a 3s settle.
+- A prompt that **reports ok can still be unsubmitted**: the brief sits in the
+  input box as `[Pasted text #1 +137 lines]` and the child reads `idle`, same
+  as one that finished (readerful-1276/1310, and likely the earlier
+  "died without reporting" 1210/1260). `herd spawn` waits for the child to
+  leave `idle`, presses Enter once if it has not, and tears the tab down rather
+  than print success if that still does not start it. Verified 2026-09-30.
 - Report files are **rewritten** on spawn, with a dispatch stamp. Deleted,
   because a stale report from a previous run of the same name would read as
   this run's answer the moment `herd inbox` looked. Stamped, because an absent

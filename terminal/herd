@@ -470,8 +470,9 @@ def cmd_reviewer(args):
         print(args.name)
         return
 
-    if not send_brief(args.name, task, report, args.timeout):
-        die(f"{args.name} would not take the brief after 3 tries; its pane "
+    why = send_brief(args.name, task, report, args.timeout)
+    if why:
+        die(f"{args.name}: {why}; its pane "
             f"({pane}) is still open — read it, then herd close {args.name}", 2)
 
     register_child(args.name, report, task, pane, kind=args.kind)
@@ -714,8 +715,15 @@ def open_report(name):
     return report
 
 
+# How long a submitted brief gets to flip the child out of `idle`. Herdr's
+# detection notices a turn starting within a second or two; this is headroom.
+BRIEF_START_MS = 15000
+
+
 def send_brief(name, task, report, timeout=120000):
     """Hand a child its brief with the reporting contract appended.
+
+    Returns None once the child is actually working on it, else why not.
 
     Settles first, then retries the paste: a just-started agent lies about
     being ready. Herdr reports `idle` with interactive_ready=true while the TUI
@@ -723,6 +731,11 @@ def send_brief(name, task, report, timeout=120000):
     five-second lifecycle-change budget and returns agent_prompt_stalled.
     Measured on this host: the first attempt after startup fails, the second
     lands.
+
+    A prompt that reports ok is not proof either: `agent prompt` can paste
+    without submitting, leaving `[Pasted text #1 +137 lines]` in the input box
+    and the child `idle` -- indistinguishable from one that finished. So the
+    post-condition is checked, not the return value (readerful-1276/1310).
     """
     st = agent_state(name) or {}
     if st.get("agent_status") != "idle":
@@ -731,9 +744,28 @@ def send_brief(name, task, report, timeout=120000):
     brief = task + BRIEF_TAIL.format(report=report, name=name)
     for _ in range(3):
         if herdr("agent", "prompt", name, brief, check=False) is not None:
-            return True
+            break
         time.sleep(3)
-    return False
+    else:
+        return "it would not take the brief after 3 tries"
+
+    # Re-prompting here would paste the brief twice. The only safe action on a
+    # pasted-but-idle child is the one a human takes: press Enter, once.
+    if brief_started(name):
+        return None
+    if (agent_state(name) or {}).get("agent_status") == "idle":
+        herdr("agent", "send-keys", name, "enter", check=False)
+        if brief_started(name):
+            return None
+    return "the brief was pasted but it never started working, even after Enter"
+
+
+def brief_started(name, timeout=BRIEF_START_MS):
+    """True once the child has left `idle` -- `done` and `blocked` count, since
+    both mean it ran; only a child still sitting on its input box does not."""
+    return herdr("agent", "wait", name, "--until", "working", "--until", "blocked",
+                 "--until", "done", "--timeout", str(timeout),
+                 check=False) is not None
 
 
 def register_child(name, report, task, pane, tab=None, kind=None):
@@ -919,9 +951,10 @@ def cmd_spawn(args):
     # Deliberately NOT --wait. The whole point of a driver is that it stays
     # available for the next thing Matt says; a driver blocked on a ten-minute
     # child is strictly worse than the tab he would have opened by hand.
-    if not send_brief(args.name, args.task, report, args.timeout):
+    why = send_brief(args.name, args.task, report, args.timeout)
+    if why:
         herdr("tab", "close", tab_id, check=False)
-        die(f"{args.name} would not take the brief after 3 tries; tab {tab_id} "
+        die(f"{args.name}: {why}; tab {tab_id} "
             f"closed. Retry, or start it by hand to watch it: "
             f"herdr tab create --workspace {ws} --cwd ~ --no-focus", 2)
 
