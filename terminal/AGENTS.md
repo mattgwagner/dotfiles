@@ -241,7 +241,8 @@ Route by what the work needs, then by what it costs:
 | Subagent, same session | `Agent` tool | Fan-out **reads** where only the conclusion matters. No pane, no tab. |
 | Claude tab | `gsd --spawn <url>` | Work that needs Claude's judgement — ambiguous scope, a design call, a surface you have to reason about. |
 | **Cursor tab** | `gsd --spawn --cursor <url>` | Everything else, and **the default once the Claude session is in sight of its limit.** Same `get-shit-done` skill, different quota. |
-| Foundry | `gsd --foundry <url>` | InContext work, so it bills to their subscription. Cannot be `--spawn`ed. |
+| InContext | `gsd --spawn --incontext <url>` | InContext work, on the InContext Team login. herd forwards `CLAUDE_CONFIG_DIR` into the tab and into any reviewer pane, so children and reviewers bill the same account. |
+| Foundry | `gsd --foundry <url>` | Sittadel work (and InContext until Foundry is retired). Cannot be `--spawn`ed: herd won't put the Foundry API key on herdr's command line. |
 
 Rules that hold regardless of route:
 

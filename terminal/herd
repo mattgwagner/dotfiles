@@ -200,6 +200,22 @@ def split_dir(rect):
     return "right" if rect["width"] >= rect["height"] * 2 else "down"
 
 
+# Which Claude account the caller bills (~/.dotfiles/shell/claude-accounts.sh).
+# A pane or tab herd opens starts from the Herdr server's environment, not the
+# caller's, so without this a reviewer or child of a `gsd --incontext` session
+# would quietly run on Matt's personal login. Foundry is NOT forwarded: its API
+# key would sit on herdr's command line, readable in `ps`.
+FORWARD_ENV = ("CLAUDE_CONFIG_DIR",)
+
+
+def forwarded_env():
+    out = []
+    for key in FORWARD_ENV:
+        if os.environ.get(key):
+            out += ["--env", f"{key}={os.environ[key]}"]
+    return out
+
+
 def new_pane(label=None):
     """Split a sibling pane at $HOME, unfocused. Returns pane_id.
 
@@ -251,6 +267,7 @@ def new_pane(label=None):
                 "--direction", split_dir(rects.get(host, {"width": 2, "height": 1})),
                 *ratio,
                 "--cwd", str(Path.home()),
+                *forwarded_env(),
                 "--no-focus")
     pane_id = res["pane"]["pane_id"]
     if label:
@@ -935,6 +952,7 @@ def cmd_spawn(args):
     res = herdr("tab", "create", "--workspace", ws,
                 "--cwd", str(Path.home()),
                 "--label", label,
+                *forwarded_env(),
                 "--no-focus")
     tab_id = res["tab"]["tab_id"]
     pane_id = res["root_pane"]["pane_id"]
@@ -981,10 +999,10 @@ def cmd_adopt(args):
 
     Two children can't use `herd spawn` and so have never been collectable.
     A `gsd --foundry` ticket is one: `--spawn` and `--foundry` are mutually
-    exclusive, because `herd spawn` calls `herdr agent start` directly and
-    there is no hook to inject Foundry's env vars before the agent process
-    launches, so client-billed work is opened by hand. The other is a child
-    whose driver pane died with its registry.
+    exclusive, because forwarded_env() deliberately won't put Foundry's API
+    key on herdr's command line, so that work is opened by hand.
+    (`gsd --incontext` spawns fine: its account is CLAUDE_CONFIG_DIR, which is
+    forwarded.) The other is a child whose driver pane died with its registry.
 
     Adopting registers it, and with --brief hands it the reporting contract it
     never got.
