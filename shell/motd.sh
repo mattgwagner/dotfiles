@@ -77,6 +77,8 @@ _motd() {
 │ gsd --spawn <url>        same, into its own tab; returns at once
 │ gsd --cursor <url>       same via Cursor (flip when quota is tight)
 │ gsd --foundry <url>      same via InContext Azure Foundry subscription
+│ use-incontext            open Claude Code on the InContext subscription
+│ use-personal             back to the personal subscription (this shell)
 │ use-incontext-foundry    open Claude Code with InContext Foundry
 │ use-sittadel-foundry     open Claude Code with Sittadel Foundry
 ├─ herd · one pane dispatches · runbook: terminal/AGENTS.md ─

@@ -5,6 +5,7 @@
 #   - shell/env.sh     (Homebrew, nvm, mise, uv, bun, opencode, completions)
 #   - shell/aliases.sh (work, yolo)
 #   - shell/foundry.sh (Claude Code Azure Foundry subscription switching)
+#   - shell/claude-accounts.sh (Claude subscription switching: personal/InContext)
 #   - shell/motd.sh    (startup banner — commands + live context)
 #   - terminal/herdr.toml -> ~/.config/herdr/config.toml (Herdr keybindings)
 #   - terminal/herd       -> ~/.local/bin/herd (agent-facing herdr wrapper)
@@ -85,6 +86,7 @@ rm -f "$RCFILE.new"
   echo "[ -f \"\$HOME/.shell.local\" ] && . \"\$HOME/.shell.local\""
   echo "# foundry.sh reads the keys above; motd.sh reads foundry's state."
   echo "[ -f \"$DOTFILES_ROOT/shell/foundry.sh\" ] && . \"$DOTFILES_ROOT/shell/foundry.sh\""
+  echo "[ -f \"$DOTFILES_ROOT/shell/claude-accounts.sh\" ] && . \"$DOTFILES_ROOT/shell/claude-accounts.sh\""
   echo "[ -f \"$DOTFILES_ROOT/shell/motd.sh\" ] && . \"$DOTFILES_ROOT/shell/motd.sh\""
   echo "$END_MARK"
 } >> "$RCFILE"

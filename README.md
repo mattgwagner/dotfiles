@@ -14,6 +14,8 @@ git clone https://github.com/mattgwagner/dotfiles.git ~/.dotfiles
 Installs `zsh/env.zsh` (Homebrew, nvm, uv, bun, opencode, Docker completions,
 iTerm integration), `zsh/aliases.zsh` (`work`, `yolo`),
 `zsh/foundry.zsh` (Claude Code Azure Foundry subscription switching),
+`shell/claude-accounts.sh` (`use-incontext` / `use-personal`: same Claude Code
+setup, different subscription login — see the header of that file),
 `zsh/motd.zsh` (startup banner listing the above plus live mini/foundry/herdr
 status, shown on every new interactive shell), and — if Herdr is installed —
 `terminal/herdr.toml` symlinked to `~/.config/herdr/config.toml`.
