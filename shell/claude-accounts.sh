@@ -40,11 +40,12 @@ _claude_link_shared() {
     unset _shared _dir _src _name
 }
 
-# Drop any Foundry routing left by use-*-foundry in this shell, so the
+# Drop any Foundry routing left by use-*-foundry in this shell (and any raw
+# API key, which outranks a login), so the
 # subscription login is what actually authenticates.
 _claude_clear_foundry() {
     export CLAUDE_CODE_USE_FOUNDRY=0
-    unset ANTHROPIC_FOUNDRY_BASE_URL ANTHROPIC_FOUNDRY_API_KEY \
+    unset ANTHROPIC_API_KEY ANTHROPIC_FOUNDRY_BASE_URL ANTHROPIC_FOUNDRY_API_KEY \
           ANTHROPIC_FOUNDRY_RESOURCE AZURE_RESOURCE_NAME \
           ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL \
           ANTHROPIC_DEFAULT_OPUS_MODEL
