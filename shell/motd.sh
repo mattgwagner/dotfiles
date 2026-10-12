@@ -77,6 +77,7 @@ _motd() {
 │ gsd --spawn <url>        same, into its own tab; returns at once
 │ gsd --cursor <url>       same via Cursor (flip when quota is tight)
 │ gsd --foundry <url>      same via InContext Azure Foundry subscription
+│ ticket <url>             /support-ticket on a SaasMail link; --cursor
 │ use-incontext            open Claude Code on the InContext subscription
 │ use-personal             back to the personal subscription (this shell)
 │ use-incontext-foundry    open Claude Code with InContext Foundry
