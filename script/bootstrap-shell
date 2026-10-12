@@ -9,6 +9,7 @@
 #   - shell/motd.sh    (startup banner — commands + live context)
 #   - terminal/herdr.toml -> ~/.config/herdr/config.toml (Herdr keybindings)
 #   - terminal/herd       -> ~/.local/bin/herd (agent-facing herdr wrapper)
+#   - terminal/bye        -> ~/.local/bin/bye (`!bye` closes an agent + its shell)
 #
 # Everything in shell/ is POSIX-compatible and sourced by BOTH zsh and bash;
 # shell-specific bits sit behind $ZSH_VERSION / $BASH_VERSION guards. That is
@@ -124,6 +125,10 @@ if command -v herdr >/dev/null 2>&1; then
 else
   info "herdr not installed here — skipping config symlink"
 fi
+
+# `bye` — run as `!bye` inside a coding agent to quit it and close the shell
+# it was launched from. Not Herdr-specific, so it is linked everywhere.
+link_file "$DOTFILES_ROOT/terminal/bye" "$HOME/.local/bin/bye"
 
 echo ""
 echo "  Shell environment installed into $RCFILE."

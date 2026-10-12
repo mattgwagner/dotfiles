@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# bye — close the coding agent AND the shell it was launched from.
+#
+# Run it from inside an agent as `!bye`. A plain `!exit` only exits the
+# throwaway subshell the agent spawns for `!` commands; this walks up the
+# process tree instead:
+#
+#   terminal/herdr -> login shell -> claude -> bash -c (the ! command) -> bye
+#   terminal/herdr -> login shell -> agent  -> bash -c (shell tool)    -> bye
+#
+# Cursor Agent is argv0=`agent` / `cursor-agent` but sets comm=`MainThread`
+# (Node), so we match both comm and the argv0 basename.
+#
+# It stops the agent with TERM (so it saves its session), then HUPs the
+# login shell, which closes the pane/window the same way `exit` would.
+# The kill runs detached because the agent tears down its children on exit.
+set -euo pipefail
+
+agents='^(claude|codex|cursor-agent|agent|opencode|gemini|crush|copilot|pi|grok)$'
+
+pid=$PPID
+agent=
+while [ "${pid:-1}" -gt 1 ]; do
+  name=$(ps -o comm= -p "$pid" | tr -d ' ')
+  argv0=$(ps -o args= -p "$pid" | awk '{print $1}')
+  base=${argv0##*/}
+  if [[ $name =~ $agents || $base =~ $agents ]]; then agent=$pid; break; fi
+  pid=$(ps -o ppid= -p "$pid" | tr -d ' ')
+done
+
+if [ -z "$agent" ]; then
+  echo "bye: no agent found above this shell; just use exit" >&2
+  exit 1
+fi
+
+shell=$(ps -o ppid= -p "$agent" | tr -d ' ')
+
+setsid bash -c "kill -TERM $agent 2>/dev/null; sleep 1; kill -KILL $agent 2>/dev/null; kill -HUP $shell 2>/dev/null" \
+  </dev/null >/dev/null 2>&1 &
