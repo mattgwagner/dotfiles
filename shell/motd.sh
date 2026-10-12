@@ -73,6 +73,7 @@ _motd() {
 │ herdr                    this box + saved machines
 │ work [host]              full remote attach (^V image paste)
 │ yolo                     claude, skip permissions + chrome
+│ !bye                     inside an agent: quit it + close the pane
 │ gsd <url>                /get-shit-done via Claude
 │ gsd --spawn <url>        same, into its own tab; returns at once
 │ gsd --cursor <url>       same via Cursor (flip when quota is tight)
