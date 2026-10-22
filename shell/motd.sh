@@ -79,6 +79,7 @@ _motd() {
 │ gsd --cursor <url>       same via Cursor (flip when quota is tight)
 │ gsd --foundry <url>      same via InContext Azure Foundry subscription
 │ ticket <url>             /support-ticket on a SaasMail link; --cursor
+│ ecu-notes [notes…]       /ecu-connect-client-notes; exits if none open
 │ use-incontext            open Claude Code on the InContext subscription
 │ use-personal             back to the personal subscription (this shell)
 │ use-incontext-foundry    open Claude Code with InContext Foundry
