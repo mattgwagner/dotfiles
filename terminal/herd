@@ -457,6 +457,28 @@ def cmd_read(args):
     die(f"could not read {args.target} as an agent name or pane id")
 
 
+def cursor_off_until():
+    """The date in ~/.config/gsd/cursor-off-until while it is still ahead.
+
+    The Cursor quota switch, shared with gsd and gsd-board-dispatch: while it
+    is set, reviewers default to claude and an explicit cursor is refused.
+    """
+    try:
+        until = (Path.home() / ".config/gsd/cursor-off-until").read_text().split()[0]
+    except (OSError, IndexError):
+        return None
+    return until if time.strftime("%Y-%m-%d") < until else None
+
+
+def resolve_kind(kind, default):
+    off = cursor_off_until()
+    if kind is None:
+        kind = "claude" if off and default == "cursor" else default
+    if kind == "cursor" and off:
+        die(f"Cursor is off until {off} (quota overdrawn); use --kind claude")
+    return kind
+
+
 def cmd_reviewer(args):
     """A second agent in a sibling pane — watchable, unlike a spawned tab.
 
@@ -467,6 +489,7 @@ def cmd_reviewer(args):
     screen, so `agent read` returns the tool-call rail and nothing it said.
     """
     check_name(args.name)
+    args.kind = resolve_kind(args.kind, "cursor")
     task = args.task
     if args.task_file:
         if task is not None:
@@ -912,6 +935,7 @@ def cmd_spawn(args):
     if not args.task:
         die('nothing to dispatch; usage: herd spawn <name> --task "<brief>"')
     check_name(args.name)
+    args.kind = resolve_kind(args.kind, "claude")
     if agent_state(args.name):
         die(f"an agent named {args.name!r} is already live; pick another name "
             f"or close it (herd close {args.name})")
@@ -1352,8 +1376,9 @@ def main():
     s = sub.add_parser("reviewer"); s.add_argument("name")
     # cursor, not codex: codex is not signed in on this host and Matt does not
     # use it, so a codex default silently parks the reviewer at a login prompt
-    # that Herdr reports as `idle`.
-    s.add_argument("--kind", default="cursor")
+    # that Herdr reports as `idle`. None = cursor, or claude while the Cursor
+    # quota switch is on (see cursor_off_until).
+    s.add_argument("--kind")
     # A long brief typed onto a command line gets mangled by the shell, so the
     # file form is the one to reach for.
     s.add_argument("--task")

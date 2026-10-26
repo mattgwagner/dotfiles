@@ -244,6 +244,11 @@ Route by what the work needs, then by what it costs:
 | InContext | `gsd --spawn --incontext <url>` | InContext work, on the InContext Team login. herd forwards `CLAUDE_CONFIG_DIR` into the tab and into any reviewer pane, so children and reviewers bill the same account. |
 | Foundry | `gsd --foundry <url>` | Sittadel work (and InContext until Foundry is retired). Cannot be `--spawn`ed: herd won't put the Foundry API key on herdr's command line. |
 
+**Cursor quota switch:** while `~/.config/gsd/cursor-off-until` holds a future
+date (YYYY-MM-DD), `gsd --cursor` and `herd … --kind cursor` are refused and
+`herd reviewer` defaults to `claude`. Route the Cursor rows to Claude until it
+expires. Set 2026-10-25: Cursor overdrawn until 2026-11-10.
+
 Rules that hold regardless of route:
 
 - **Check the balance before the second wave, not after.** The moment you are
