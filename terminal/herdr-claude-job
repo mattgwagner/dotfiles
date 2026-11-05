@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Open a Herdr tab running interactive Claude on a prompt, for scheduled jobs
+# that need Claude's judgment or a follow-up conversation (Hermes `--no-agent`
+# scripts call this; the gate, if any, runs before it). Same launch as gsd.
+#   herdr-claude-job <workspace label> <tab label> <cwd> <prompt>
+# Skips if a tab with that label is already open in the workspace.
+set -euo pipefail
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+[ $# -eq 4 ] || { echo "usage: herdr-claude-job <workspace> <tab label> <cwd> <prompt>" >&2; exit 2; }
+ws_label=$1 label=$2 cwd=$3 prompt=$4
+
+ws=$(herdr workspace list | jq -r --arg l "$ws_label" '.result.workspaces[] | select(.label==$l) | .workspace_id' | head -1)
+[ -n "$ws" ] || ws=$(herdr workspace create --label "$ws_label" --cwd "$HOME" | jq -r '.result.workspace.workspace_id // .result.workspace_id')
+if herdr tab list --workspace "$ws" | jq -e --arg l "$label" '.result.tabs[] | select(.label==$l)' >/dev/null; then
+  echo "$label: tab already open in $ws_label"; exit 0
+fi
+pane=$(herdr tab create --workspace "$ws" --cwd "$cwd" --label "$label" --no-focus | jq -r '.result.root_pane.pane_id')
+herdr pane run "$pane" "claude --dangerously-skip-permissions $(printf %q "$prompt")"
+echo "$label: started in Herdr ($ws_label)"
