@@ -113,11 +113,16 @@ fi
 
 # User-level mise tools. npm CLIs (supabase, agent-browser, ob) are declared
 # here as npm: tools so a node bump doesn't strand them (readerful #1739).
-# Agent host only: the list (hermes-agent, beads, ...) is that box's toolset.
+# Linux only: the Omarchy agent host's toolset (hermes-agent, beads, ...).
 if [ "$(uname -s)" = Linux ] && command -v mise >/dev/null 2>&1; then
   link_file "$DOTFILES_ROOT/terminal/mise.toml" "$HOME/.config/mise/config.toml"
-  mise install --yes
-  success "installed user mise tools"
+  # A failed tool install (network, a missing python for pipx) must not stop
+  # the herd/herdr links below.
+  if mise install --yes; then
+    success "installed user mise tools"
+  else
+    echo "  mise install failed; re-run \`mise install\` once fixed" >&2
+  fi
 fi
 
 # Herdr's config, if Herdr is installed here. link_file refuses to clobber a
