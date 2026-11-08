@@ -10,6 +10,8 @@
 #   - terminal/herdr.toml -> ~/.config/herdr/config.toml (Herdr keybindings)
 #   - terminal/herd       -> ~/.local/bin/herd (agent-facing herdr wrapper)
 #   - terminal/bye        -> ~/.local/bin/bye (`!bye` closes an agent + its shell)
+#   - terminal/mise.toml  -> ~/.config/mise/config.toml (user tools, incl. the npm
+#                            CLIs that must survive node bumps)
 #
 # Everything in shell/ is POSIX-compatible and sourced by BOTH zsh and bash;
 # shell-specific bits sit behind $ZSH_VERSION / $BASH_VERSION guards. That is
@@ -107,6 +109,15 @@ EOF
   success "created ~/.shell.local stub"
 else
   success "~/.shell.local already exists"
+fi
+
+# User-level mise tools. npm CLIs (supabase, agent-browser, ob) are declared
+# here as npm: tools so a node bump doesn't strand them (readerful #1739).
+# Agent host only: the list (hermes-agent, beads, ...) is that box's toolset.
+if [ "$(uname -s)" = Linux ] && command -v mise >/dev/null 2>&1; then
+  link_file "$DOTFILES_ROOT/terminal/mise.toml" "$HOME/.config/mise/config.toml"
+  mise install --yes
+  success "installed user mise tools"
 fi
 
 # Herdr's config, if Herdr is installed here. link_file refuses to clobber a
