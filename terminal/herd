@@ -22,9 +22,9 @@ Usage:
   herd status [--stale MIN]        the herd: who is live, doing what, how stale
   herd run <label> -- <cmd...>     sibling pane, named, runs cmd; prints pane id
   herd gate <label> -- <cmd...>    run it, wait for it, exit with its code.
-                                   Never pipe it (`| tail`): the pipeline exits
-                                   with tail's 0. Output is already trimmed
-                                   (--chars, default 4000).
+                                   Refuses to run into a pipe (`| tail` would
+                                   exit with tail's 0); output is already
+                                   trimmed (--chars, default 4000).
   herd wait <pane> --match TEXT | --regex PAT [--timeout MS]
   herd read <target> [--lines N]   pane id or agent name
   herd spawn <name> --task "..." [--for <repo>]
@@ -63,6 +63,7 @@ pane some other client happens to have focused.
 import argparse
 import json
 import os
+import stat
 import queue
 import re
 import subprocess
@@ -388,6 +389,15 @@ def cmd_gate(args):
     cmd = args.command
     if not cmd:
         die("nothing to run; usage: herd gate <label> -- <cmd...>")
+    # A pipeline exits with its LAST command's code, so `herd gate ... | tail`
+    # reports tail's 0 on a red gate. That turned failed preflights green three
+    # times (usefireapp #1451, readerful #1739 among them) despite written
+    # warnings, so refuse it here rather than document it again. A file
+    # redirect (`> log`) is a regular file and is fine.
+    if stat.S_ISFIFO(os.fstat(sys.stdout.fileno()).st_mode):
+        die("refusing to gate into a pipe: the pipeline's exit code would be the "
+            "last command's, not the gate's. Drop the `| ...` (output is already "
+            "trimmed to --chars) or redirect to a file.", 2)
 
     token = f"HERD_{re.sub(r'[^A-Z0-9]', '_', args.label.upper())}_{os.urandom(3).hex().upper()}"
     pane = new_pane(args.label)
