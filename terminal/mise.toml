@@ -11,6 +11,6 @@ osv-scanner = "2.6.0"
 # supabase is pinned: Readerful's per-worktree stack needs CLI v3 (#1726).
 "npm:supabase" = "3.0.0"
 "npm:agent-browser" = "0.38.1"
-"npm:obsidian-headless" = "0.0.14"
+"npm:obsidian-headless" = { version = "0.0.14", allow_builds = "better-sqlite3" }
 
 [settings.upgrade]
