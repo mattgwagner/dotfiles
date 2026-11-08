@@ -21,7 +21,10 @@ Two invariants this script exists to protect:
 Usage:
   herd status [--stale MIN]        the herd: who is live, doing what, how stale
   herd run <label> -- <cmd...>     sibling pane, named, runs cmd; prints pane id
-  herd gate <label> -- <cmd...>    run it, wait for it, exit with its code
+  herd gate <label> -- <cmd...>    run it, wait for it, exit with its code.
+                                   Never pipe it (`| tail`): the pipeline exits
+                                   with tail's 0. Output is already trimmed
+                                   (--chars, default 4000).
   herd wait <pane> --match TEXT | --regex PAT [--timeout MS]
   herd read <target> [--lines N]   pane id or agent name
   herd spawn <name> --task "..." [--for <repo>]
@@ -431,6 +434,13 @@ def cmd_gate(args):
     if args.chars and len(body) > args.chars:
         body = "... [trimmed]\n" + body[-args.chars:]
     print(body)
+    # The verdict must be the LAST line out. Under a pipe stdout is block
+    # buffered and stderr is not, so without this flush the verdict printed
+    # first and `herd gate ... 2>&1 | tail -40` cut it off; the caller then saw
+    # tail's exit 0 for a preflight that had failed (readerful #1739, the #1741
+    # run). The pipe's exit status is still tail's: don't pipe a gate. The body
+    # is already trimmed to --chars.
+    sys.stdout.flush()
     print(f"\n-- {args.label}: exit {rc} (pane {pane})", file=sys.stderr)
 
     if args.close and rc == 0:
