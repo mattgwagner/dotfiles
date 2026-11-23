@@ -54,7 +54,11 @@ Usage:
   herd close <pane|label|name>... | --all
 
   herd --machine <label> status     the same, against a saved SSH machine
-                                    (herdr 0.9.1+; observe/steer verbs only)
+                                    (herdr 0.9.1+; observe/steer verbs)
+  herd --machine <label> spawn|adopt ...
+                                    child on that machine (same $HOME required),
+                                    tracked in THIS pane's registry: plain
+                                    `herd inbox` / `watch` / `close` reach it.
 
 Without --machine, requires HERDR_ENV=1 — controlling the session from outside it targets whatever
 pane some other client happens to have focused.
@@ -66,6 +70,7 @@ import os
 import stat
 import queue
 import re
+import shlex
 import subprocess
 import sys
 import threading
@@ -95,7 +100,14 @@ NEEDS_LOCAL_PANE = {"run", "gate", "reviewer"}
 # the brief tells the child to write somewhere the driver will never look.
 # Attaching (`work`) puts you in a real pane on that machine and every verb
 # works unchanged, so that is the supported answer rather than an ssh shim.
-NEEDS_LOCAL_FS = {"spawn", "inbox", "adopt", "watch"}
+#
+# `spawn` and `adopt` are the exception when both machines share a home path
+# (omarchy -> thinkstation, both /home/matt): the report path is the same
+# string on both sides, the file is written and read over ssh, and the child's
+# registry entry carries its machine so `inbox` / `watch` / `close` -- run
+# WITHOUT --machine -- reach it where it lives. One driver, one inbox. A Mac
+# target still fails the home check in `remote_home_matches`.
+NEEDS_LOCAL_FS = {"inbox", "watch"}
 
 SUBCOMMANDS = ["status", "run", "wait", "gate", "read", "reviewer", "ask",
                "notify", "tab-name", "close", "spawn", "adopt", "inbox", "watch"]
@@ -115,33 +127,124 @@ def require_herdr(args):
                 f"Use it from a pane on that machine, or pick an observe/steer "
                 f"verb: {', '.join(sorted(set(SUBCOMMANDS) - NEEDS_LOCAL_PANE - NEEDS_LOCAL_FS))}.")
         if args.cmd in NEEDS_LOCAL_FS:
-            die(f"`herd {args.cmd}` reads and writes files on the machine the "
-                f"work runs on; over --machine it would resolve them against "
-                f"THIS host's home instead. Attach and run it from there: "
-                f"work {args.machine}")
+            die(f"`herd {args.cmd}` already covers children on other machines: "
+                f"each registry entry remembers where its child runs. Drop "
+                f"--machine and run `herd {args.cmd}` from the pane that "
+                f"dispatched them.")
+        if args.cmd in ("spawn", "adopt"):
+            # The caller still needs its own pane: the registry is keyed by it.
+            if os.environ.get("HERDR_ENV") != "1":
+                die(f"`herd --machine {args.machine} {args.cmd}` records the "
+                    f"child in the calling pane's registry; run it from a "
+                    f"Herdr pane")
+            remote_home_matches(args.machine)
         return
     if os.environ.get("HERDR_ENV") != "1":
         die("not running inside a Herdr pane (HERDR_ENV != 1). Either run this "
             "from a Herdr pane, or name a machine: herd --machine <label> ...")
 
 
-def _run(args, check=True):
+def _mflag(machine):
+    """herdr's machine selector. None = whatever --machine set for this call
+    (MACHINE); "" = this session explicitly; a label = that saved machine.
+
+    The explicit form exists for registry entries: `inbox` and `watch` walk
+    children that live on different machines in one call, so a single global
+    cannot say where each one is.
+    """
+    if machine is None:
+        return MACHINE
+    return ["--machine", machine] if machine else []
+
+
+def _run(args, check=True, machine=None):
     """Run the herdr CLI. Returns (returncode, stdout, stderr)."""
-    proc = subprocess.run(["herdr", *MACHINE, *args], capture_output=True, text=True)
+    proc = subprocess.run(["herdr", *_mflag(machine), *args],
+                          capture_output=True, text=True)
     if proc.returncode != 0 and check:
         die(f"herdr {' '.join(args)} failed: "
             f"{proc.stderr.strip() or proc.stdout.strip() or 'no output'}")
     return proc.returncode, proc.stdout, proc.stderr
 
 
-def herdr(*args, check=True):
+# ------------------------------------------------------ files on other machines
+
+_SSH_TARGETS = {}
+
+
+def ssh_target(label):
+    """The ssh target behind a saved Herdr machine label.
+
+    `herdr machine list` prints tab-separated id, label, target, session,
+    state. Going through the same target herdr uses means the same ssh config
+    entry, and with it the ControlMaster that keeps Omarchy's ufw rate limit
+    on port 22 (6 new connections / 30s, then REJECT) from refusing a burst of
+    report reads.
+    """
+    if label not in _SSH_TARGETS:
+        out = subprocess.run(["herdr", "machine", "list"], capture_output=True,
+                             text=True).stdout
+        for line in out.splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 3 and parts[1] == label:
+                _SSH_TARGETS[label] = parts[2]
+                break
+        else:
+            die(f"no saved Herdr machine labelled {label!r} (herdr machine list)")
+    return _SSH_TARGETS[label]
+
+
+def ssh(label, script, stdin=None):
+    """Run a shell snippet on a saved machine. Returns (rc, stdout)."""
+    proc = subprocess.run(["ssh", "-o", "BatchMode=yes", ssh_target(label), script],
+                          input=stdin, capture_output=True, text=True)
+    return proc.returncode, proc.stdout
+
+
+def remote_home_matches(label):
+    """Refuse a machine whose home differs from ours.
+
+    Report paths and pane cwds are written as THIS host's absolute paths. On a
+    machine with the same home they mean the same place; on a Mac
+    (/Users/mattwagner) they point at nothing and the child writes where no
+    one will ever look -- the original reason spawn was blocked over --machine.
+    """
+    rc, out = ssh(label, 'printf %s "$HOME"')
+    if rc != 0:
+        die(f"cannot reach {label} over ssh ({ssh_target(label)}) to check its home")
+    if out != str(Path.home()):
+        die(f"{label}'s home is {out!r}, not {str(Path.home())!r}: report paths "
+            f"would not line up. Attach and run it there instead: work {label}")
+
+
+def remote_write(label, path, text):
+    q = shlex.quote(str(path))
+    rc, _ = ssh(label, f"mkdir -p \"$(dirname {q})\" && cat > {q}", stdin=text)
+    if rc != 0:
+        die(f"could not write {path} on {label}")
+
+
+def remote_read(label, path):
+    """(text, mtime) of a file on another machine; (None, 0) if it is not there."""
+    q = shlex.quote(str(path))
+    rc, out = ssh(label, f"[ -f {q} ] && stat -c %Y {q} && cat {q}")
+    if rc != 0 or not out:
+        return None, 0
+    head, _, body = out.partition("\n")
+    try:
+        return body, float(head)
+    except ValueError:
+        return None, 0
+
+
+def herdr(*args, check=True, machine=None):
     """For commands that answer in JSON: returns the parsed .result.
 
     Most control verbs do. The exceptions are `pane run` (silent on success)
     and `pane read` / `agent read`, which write raw terminal text — use
     herdr_text() for those.
     """
-    rc, out, _ = _run(list(args), check=check)
+    rc, out, _ = _run(list(args), check=check, machine=machine)
     if rc != 0:
         return None
     try:
@@ -674,13 +777,16 @@ def cmd_close(args):
 
     for name in children:
         child = spawns.pop(name)
+        # Tab and pane ids are per Herdr server: close on the child's machine,
+        # or a local w1:t2 that happens to share the id goes down instead.
+        where = child.get("machine", "")
         if child.get("tab"):
-            herdr("tab", "close", child["tab"], check=False)
+            herdr("tab", "close", child["tab"], check=False, machine=where)
         elif child.get("pane"):
             # A reviewer owns a pane, not a tab, and `new_pane` also recorded it
             # in `mine`. Drop it from there so the pane path below does not then
             # try to close it a second time and report it missing.
-            herdr("pane", "close", child["pane"], check=False)
+            herdr("pane", "close", child["pane"], check=False, machine=where)
             mine.pop(child["pane"], None)
         print(name)
     if children:
@@ -779,10 +885,16 @@ def open_report(name):
     line in it from the moment of dispatch, the file's mtime is the child's
     heartbeat and the age column means something from the start.
     """
-    REPORTS.mkdir(parents=True, exist_ok=True)
     report = REPORTS / f"{name}.md"
     stamp = time.strftime("%Y-%m-%d %H:%M")
-    report.write_text(f"status: dispatched {stamp} — no word from {name} yet\n")
+    text = f"status: dispatched {stamp} — no word from {name} yet\n"
+    if MACHINE:
+        # Same path string, on the machine the child runs on: that is where
+        # it will write, so that is where the stamp has to be.
+        remote_write(MACHINE[1], report, text)
+        return report
+    REPORTS.mkdir(parents=True, exist_ok=True)
+    report.write_text(text)
     return report
 
 
@@ -839,7 +951,7 @@ def brief_started(name, timeout=BRIEF_START_MS):
                  check=False) is not None
 
 
-def register_child(name, report, task, pane, tab=None, kind=None):
+def register_child(name, report, task, pane, tab=None, kind=None, machine=""):
     """Record a child so `herd inbox` can collect it and `herd close` can end it.
 
     `tab` is None for a child that owns only a pane (a reviewer split off the
@@ -851,6 +963,9 @@ def register_child(name, report, task, pane, tab=None, kind=None):
         "tab": tab,
         "pane": pane,
         "kind": kind,
+        # "" = this machine. Pane/tab ids are per Herdr server (both boxes
+        # have a w1:p1), so every later call about this child goes to here.
+        "machine": machine,
         "report": str(report),
         "task": task[:200],
         "spawned_at": time.time(),
@@ -880,7 +995,7 @@ def save_spawns(spawns):
     spawn_state_file().write_text(json.dumps(spawns, indent=1, sort_keys=True))
 
 
-def agent_state(name):
+def agent_state(name, machine=None):
     """One agent by name, or None if nothing answers to it.
 
     Must be `agent get`, not a scan of `agent list`: the list payload carries
@@ -891,7 +1006,7 @@ def agent_state(name):
     clobbered the first one's report, and `cmd_inbox` read every child as
     exited and pruned the ones that had not written a report yet.
     """
-    res = herdr("agent", "get", name, check=False)
+    res = herdr("agent", "get", name, check=False, machine=machine)
     return (res or {}).get("agent")
 
 
@@ -983,9 +1098,30 @@ def cmd_spawn(args):
         else:
             print(f"herd: no workspace matches {args.route}; spawning in this "
                   f"pane's workspace", file=sys.stderr)
+    if MACHINE and not ws:
+        # HERDR_WORKSPACE_ID names a workspace in THIS session; on another
+        # server the same id is someone else's workspace or nothing. Use the
+        # remote's focused workspace, else its first.
+        wss = (herdr("workspace", "list") or {}).get("workspaces", [])
+        hit = next((w for w in wss if w.get("focused")), wss[0] if wss else None)
+        if not hit:
+            die(f"{MACHINE[1]} has no workspace to spawn into")
+        ws = hit["workspace_id"]
     ws = ws or os.environ.get("HERDR_WORKSPACE_ID")
     if not ws:
         die("no workspace to spawn into; pass --workspace or run from a pane")
+
+    env = forwarded_env()
+    if MACHINE and env:
+        # The caller's account dir (e.g. ~/.claude-incontext) may not exist on
+        # the target; a child pointed at a missing CLAUDE_CONFIG_DIR starts at
+        # a login screen and Herdr reports it `idle`. Refuse rather than
+        # silently bill the wrong account.
+        cfg = os.environ.get("CLAUDE_CONFIG_DIR", "")
+        rc, _ = ssh(MACHINE[1], f"[ -f {shlex.quote(cfg)}/.credentials.json ]")
+        if rc != 0:
+            die(f"CLAUDE_CONFIG_DIR={cfg} has no login on {MACHINE[1]}; log that "
+                f"account in there first, or spawn locally")
 
     # A TAB, not a split. `pane split` carves the new pane out of the caller,
     # so a driver that dispatches six children is 1/2^6 of the rectangle it
@@ -996,7 +1132,7 @@ def cmd_spawn(args):
     res = herdr("tab", "create", "--workspace", ws,
                 "--cwd", str(Path.home()),
                 "--label", label,
-                *forwarded_env(),
+                *env,
                 "--no-focus")
     tab_id = res["tab"]["tab_id"]
     pane_id = res["root_pane"]["pane_id"]
@@ -1005,8 +1141,12 @@ def cmd_spawn(args):
     # first act is `herd tab-name <repo>-<n>` once scope resolves, and
     # tab-name refuses to overwrite a name it did not set -- so without this
     # line the dispatch-time guess reads as Matt's choice and sticks forever.
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    tab_state_file(tab_id).write_text(json.dumps({"label": label}))
+    # The child runs tab-name on its own machine, so that is where it goes.
+    if MACHINE:
+        remote_write(MACHINE[1], tab_state_file(tab_id), json.dumps({"label": label}))
+    else:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        tab_state_file(tab_id).write_text(json.dumps({"label": label}))
 
     # A freshly created pane needs its shell at an interactive prompt before
     # `agent start` will accept it.
@@ -1031,11 +1171,12 @@ def cmd_spawn(args):
             f"closed. Retry, or start it by hand to watch it: "
             f"herdr tab create --workspace {ws} --cwd ~ --no-focus", 2)
 
+    where = MACHINE[1] if MACHINE else ""
     register_child(args.name, report, args.task, pane_id,
-                   tab=tab_id, kind=args.kind)
+                   tab=tab_id, kind=args.kind, machine=where)
 
-    print(f"{args.name}  tab {tab_id}  pane {pane_id}")
-    print(f"report: {report}", file=sys.stderr)
+    print(f"{args.name}  tab {tab_id}  pane {pane_id}" + (f"  on {where}" if where else ""))
+    print(f"report: {report}" + (f" (on {where})" if where else ""), file=sys.stderr)
 
 
 def cmd_adopt(args):
@@ -1058,11 +1199,17 @@ def cmd_adopt(args):
             f"running, and note an unnamed pane has no name to adopt "
             f"(herdr agent rename <target> {args.name})", 2)
 
-    REPORTS.mkdir(parents=True, exist_ok=True)
     report = REPORTS / f"{args.name}.md"
-    if not report.exists():
-        stamp = time.strftime("%Y-%m-%d %H:%M")
-        report.write_text(f"status: adopted {stamp} — started outside herd\n")
+    stamp = time.strftime("%Y-%m-%d %H:%M")
+    stub = f"status: adopted {stamp} — started outside herd\n"
+    where = MACHINE[1] if MACHINE else ""
+    if where:
+        if remote_read(where, report)[0] is None:
+            remote_write(where, report, stub)
+    else:
+        REPORTS.mkdir(parents=True, exist_ok=True)
+        if not report.exists():
+            report.write_text(stub)
 
     # tab stays None without --own-tab: `herd close --all` closes a child's
     # whole tab, and a tab this pane did not open is not its to take down.
@@ -1070,7 +1217,7 @@ def cmd_adopt(args):
                    args.task or st.get("terminal_title_stripped", ""),
                    st.get("pane_id"),
                    tab=st.get("tab_id") if args.own_tab else None,
-                   kind=st.get("agent"))
+                   kind=st.get("agent"), machine=where)
 
     if args.brief:
         # Prompting a working agent queues the text instead of steering it,
@@ -1092,8 +1239,21 @@ def reports_on_disk():
         return []
 
 
-def read_report(path):
-    """Classify a child's report file: the state it implies, and the one line
+def child_report(name, s):
+    """(text, mtime) of a child's report wherever the child runs; (None, 0)
+    when there is no file. `s` is its registry entry ({} for one known only
+    from the local reports directory)."""
+    path = Path(s["report"]) if s.get("report") else REPORTS / f"{name}.md"
+    if s.get("machine"):
+        return remote_read(s["machine"], path)
+    try:
+        return path.read_text(), path.stat().st_mtime
+    except OSError:
+        return None, 0
+
+
+def read_report(text):
+    """Classify a child's report text: the state it implies, and the one line
     worth showing for it.
 
     The file is the only channel that crosses, so it carries all three kinds of
@@ -1103,10 +1263,9 @@ def read_report(path):
       nothing but `status:`      still working; the last one is its progress
       anything else              a real report; line one is the headline
     """
-    try:
-        lines = [l.strip() for l in Path(path).read_text().splitlines()]
-    except OSError:
+    if text is None:
         return "silent", ""
+    lines = [l.strip() for l in text.splitlines()]
 
     blocked = [l for l in lines if l.startswith(BLOCKED_MARKER)]
     if blocked:
@@ -1180,12 +1339,12 @@ def cmd_inbox(args):
         # Resolved off disk when this pane did not dispatch it, so a report
         # outlives the driver that asked for it.
         s = spawns.get(args.name, {})
-        path = Path(s["report"]) if s.get("report") else REPORTS / f"{args.name}.md"
-        if not path.exists():
+        text, _ = child_report(args.name, s)
+        if text is None:
             known = sorted({p.stem for p in reports_on_disk()} | set(spawns))
             die(f"no report from {args.name!r}"
                 + (f"; known: {', '.join(known)}" if known else ""), 2)
-        print(path.read_text(), end="")
+        print(text, end="")
         mark_seen(args.name)
         return
 
@@ -1208,10 +1367,9 @@ def cmd_inbox(args):
     rows, gone = [], []
     for name in names:
         s = spawns.get(name, {})
-        path = Path(s["report"]) if s.get("report") else REPORTS / f"{name}.md"
-        mtime = path.stat().st_mtime if path.exists() else 0
-        st = agent_state(name)
-        rstate, line = read_report(path)
+        text, mtime = child_report(name, s)
+        st = agent_state(name, machine=s.get("machine", ""))
+        rstate, line = read_report(text)
 
         # Nothing live and nothing written: a child that never got off the
         # ground. Only this pane's registry is ours to prune — `--all` is a
@@ -1222,7 +1380,7 @@ def cmd_inbox(args):
             continue
 
         rows.append({
-            "name": name,
+            "name": name + (f"@{s['machine']}" if s.get("machine") else ""),
             # The report outranks the pane. A child that wrote `## BLOCKED:`
             # and stopped reads as plain `idle` to Herdr, which classifies
             # `blocked` from an approval UI this one never opened.
@@ -1278,10 +1436,9 @@ def _watch_result(name, wait_res):
     """
     spawns = load_spawns()
     s = spawns.get(name, {})
-    path = Path(s["report"]) if s.get("report") else REPORTS / f"{name}.md"
-    rstate, line = read_report(path)
+    rstate, line = read_report(child_report(name, s)[0])
     if wait_res is None:
-        st = agent_state(name)
+        st = agent_state(name, machine=s.get("machine", ""))
         state = "blocked" if rstate == "blocked" else (st or {}).get("agent_status", "exited")
         return {"name": name, "state": state, "line": line or s.get("task", ""),
                 "note": "wait timed out or the agent is gone"}
@@ -1325,7 +1482,10 @@ def cmd_watch(args):
     results = queue.Queue()
 
     def worker(name):
-        res = herdr("agent", "wait", name, "--timeout", str(args.timeout), check=False)
+        # Each child is waited on where it runs; a global MACHINE cannot say
+        # that for a batch split across boxes.
+        res = herdr("agent", "wait", name, "--timeout", str(args.timeout),
+                    check=False, machine=spawns.get(name, {}).get("machine", ""))
         results.put(_watch_result(name, res))
 
     for name in names:

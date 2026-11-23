@@ -284,13 +284,39 @@ real pane on the agent host and **every verb above works unchanged**. That is
 the supported answer, not an ssh shim.
 
 `herd --machine <label>` runs a one-shot against a saved machine without
-attaching, but only the observe/steer verbs: `status`, `read`, `ask`, `notify`,
-`close`. `spawn` and `inbox` are refused there by design — both resolve paths
-(`--cwd`, the report file) against *this* host's home, so from a MacBook the
-brief would tell the child to write to `/Users/mattwagner/...` for work running
-on omarchy, and the driver would watch a path nothing ever writes. Saved
-machines are registered on the client side with `herdr machine add <ssh-target>
---label <label>`.
+attaching: the observe/steer verbs (`status`, `read`, `ask`, `notify`, `close`),
+plus `spawn`/`adopt` when the target's `$HOME` matches the driver's (checked
+over ssh at dispatch). From a MacBook the homes differ (`/Users/mattwagner`), so
+spawn is still refused there: the brief would name a report path nothing on the
+agent host writes. Saved machines are registered on the client side with
+`herdr machine add <ssh-target> --label <label>`.
+
+### Worker machine: thinkstation (from omarchy)
+
+omarchy stays the driver; **thinkstation** (62 GB, 12 threads) takes the
+memory-heavy children. Saved on omarchy as `thinkstation`.
+
+```sh
+herd --machine thinkstation spawn <name> --task "..."   # child runs there
+herd inbox / herd watch / herd close <name>             # NO --machine: the
+                                                        # registry knows where
+```
+
+- The report file is the same path on thinkstation (`~/.cache/herd/reports/`)
+  and is read over ssh; `inbox` lists the child as `<name>@thinkstation`.
+- **Send there:** browser waves, e2e suites, per-worktree Supabase stacks and
+  dev servers, long batch scripts. The four-tab browser cap is omarchy's RAM;
+  on thinkstation check `free -g` (MemAvailable) instead of a fixed number.
+- **Keep on omarchy:** the driver, Hermes, anything that needs the vault (not
+  synced there) or Foundry/InContext env.
+- The child's repo needs a clone under `~/Code` on thinkstation; the brief says
+  so, or `gh repo clone` it first. Secrets: copy only the per-repo `.env` a job
+  needs, never `~/.hermes/.env`.
+- A spawned child's `herdr notification` toasts land on thinkstation's Herdr
+  server; Matt sees them only with thinkstation saved in his Mac Herdr. The
+  `## BLOCKED:` line still reaches `herd inbox` here.
+- ssh to thinkstation goes through one multiplexed connection: Omarchy's ufw
+  rate-limits port 22, and a burst of fresh connections is refused.
 
 ## Browsers on this box
 
