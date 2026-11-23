@@ -1,0 +1,6 @@
+services:
+  app:
+    image: listmonk/listmonk:v6.2.0
+    mem_limit: 256m
+  db:
+    mem_limit: 256m

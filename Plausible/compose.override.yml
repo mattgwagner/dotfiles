@@ -1,0 +1,8 @@
+# Memory caps: this host also runs agent work (thinkstation, 2026-11).
+services:
+  plausible_db:
+    mem_limit: 512m
+  plausible_events_db:
+    mem_limit: 1536m
+  plausible:
+    mem_limit: 768m
