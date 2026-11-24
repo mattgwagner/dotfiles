@@ -32,3 +32,10 @@ work() {
 }
 
 alias yolo='claude --dangerously-skip-permissions --chrome'
+
+# zsh has a `bye` builtin (a synonym for exit) that outranks ~/.local/bin/bye
+# on PATH, so `!bye` in an agent silently exits only its own subshell. A
+# function outranks the builtin and survives the agent's shell snapshot.
+if [ -n "$ZSH_VERSION" ]; then
+  bye() { command "$HOME/.local/bin/bye" "$@"; }
+fi

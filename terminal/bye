@@ -14,6 +14,8 @@
 # It stops the agent with TERM (so it saves its session), then HUPs the
 # login shell, which closes the pane/window the same way `exit` would.
 # The kill runs detached because the agent tears down its children on exit.
+# On zsh hosts (the Mac) shell/aliases.sh defines a `bye` function, since
+# zsh's own `bye` builtin would otherwise shadow this script.
 set -euo pipefail
 
 agents='^(claude|codex|cursor-agent|agent|opencode|gemini|crush|copilot|pi|grok)$'
@@ -35,5 +37,13 @@ fi
 
 shell=$(ps -o ppid= -p "$agent" | tr -d ' ')
 
-setsid bash -c "kill -TERM $agent 2>/dev/null; sleep 1; kill -KILL $agent 2>/dev/null; kill -HUP $shell 2>/dev/null" \
-  </dev/null >/dev/null 2>&1 &
+reap="kill -TERM $agent 2>/dev/null; sleep 1; kill -KILL $agent 2>/dev/null; kill -HUP $shell 2>/dev/null"
+
+# macOS has no setsid(1). nohup + disown keeps the reaper alive while the
+# agent tears down its children; it only needs to outlive them by a second.
+if command -v setsid >/dev/null 2>&1; then
+  setsid bash -c "$reap" </dev/null >/dev/null 2>&1 &
+else
+  nohup bash -c "$reap" </dev/null >/dev/null 2>&1 &
+  disown
+fi
