@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Queue a dated Hermes one-shot that opens a Herdr tab running Claude on a
+# prompt. This is the only thing another host may do on the Hermes host: its
+# key in authorized_keys is pinned to this script with
+#   command="$HOME/.local/bin/hermes-enqueue",restrict ssh-ed25519 ... <host>-enqueue
+# so any command the caller sends is ignored and stdin is the spec.
+#
+# stdin (JSON):
+#   {"name": "UseFireApp wide-profile reads checkback",   # <= 80 chars
+#    "at": "2026-11-26 09:30",                              # Eastern, 08:00-22:59
+#    "workspace": "UseFireApp",                             # Herdr workspace label
+#    "prompt": "Self-contained instructions for the run"}   # <= 8000 chars
+# stdout: {"ok":true,"id":"<hermes job id>","name":…,"runs_at":…,"script":…}
+# Errors go to stderr with exit 1, and nothing is scheduled.
+#
+# Runs locally too:  hermes-enqueue < spec.json
+set -euo pipefail
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin"
+export TZ=America/New_York
+
+die() { echo "hermes-enqueue: $*" >&2; exit 1; }
+
+spec=$(head -c 20000)
+jq -e 'type == "object"' >/dev/null 2>&1 <<<"$spec" || die "stdin must be a JSON object"
+field() { jq -r --arg k "$1" '.[$k] // "" | tostring' <<<"$spec"; }
+name=$(field name) at=$(field at) ws=$(field workspace) prompt=$(field prompt)
+
+[ -n "$name" ] && [ ${#name} -le 80 ] || die "name is required, max 80 chars"
+[[ "$name" != *$'\n'* ]] || die "name must be one line"
+[[ "$ws" =~ ^[A-Za-z0-9][A-Za-z0-9\ ._-]{0,39}$ ]] || die "workspace must be a Herdr label (letters, digits, space . _ -; max 40)"
+[ -n "$prompt" ] && [ ${#prompt} -le 8000 ] || die "prompt is required, max 8000 chars"
+[[ "$at" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}[\ T][0-9]{2}:[0-9]{2}$ ]] || die "at must be 'YYYY-MM-DD HH:MM' Eastern"
+
+ts=$(date -d "${at/T/ }" +%s 2>/dev/null) || die "at is not a valid date: $at"
+now=$(date +%s)
+[ "$ts" -ge $((now + 300)) ] || die "at must be at least 5 minutes from now"
+[ "$ts" -le $((now + 180 * 86400)) ] || die "at must be within 180 days"
+hour=$(date -d "@$ts" +%-H)
+[ "$hour" -ge 8 ] && [ "$hour" -lt 23 ] || die "at falls in quiet hours (23:00-08:00 ET)"
+
+slug=$(tr '[:upper:]' '[:lower:]' <<<"$name" | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' | cut -c1-40 | sed -E 's/-+$//')
+[ -n "$slug" ] || die "name needs at least one letter or digit"
+day=$(date -d "@$ts" +%Y%m%d)
+base="rq_${day}_${slug}_herdr"
+dir="$HOME/.hermes/scripts"
+script="$dir/$base.sh" promptfile="$dir/$base.prompt"
+[ ! -e "$script" ] || die "a queued job with this name and date already exists ($base.sh)"
+
+queued_at=$(date '+%Y-%m-%d %H:%M %Z')
+from=${SSH_CONNECTION%% *}
+printf 'Hermes one-shot "%s", queued %s from %s. Its instructions follow.\n\n%s\n' \
+  "$name" "$queued_at" "${from:-this host}" "$prompt" > "$promptfile"
+
+cat > "$script" <<EOF
+#!/usr/bin/env bash
+# One-shot queued by hermes-enqueue at $queued_at: $name
+exec "\$HOME/.local/bin/herdr-claude-job" $(printf %q "$ws") $(printf %q "rq-$day-$slug") "\$HOME" "\$(cat $(printf %q "$promptfile"))"
+EOF
+chmod 700 "$script"
+
+cron="$(date -d "@$ts" '+%-M %-H %-d %-m') *"
+if ! out=$(hermes cron create "$cron" --name "$name" --repeat 1 --no-agent --deliver local --script "$base.sh" 2>&1); then
+  rm -f "$script" "$promptfile"
+  die "hermes cron create failed: $out"
+fi
+
+id=$(jq -r --arg s "$base.sh" '(.jobs? // .)[] | select(.script == $s) | .id' "$HOME/.hermes/cron/jobs.json" | tail -1)
+[ -n "$id" ] || die "job created but its id was not found in jobs.json; check 'hermes cron list'. Output: $out"
+
+runs_at=$(date -d "@$ts" '+%Y-%m-%d %H:%M %Z')
+mkdir -p "$HOME/.hermes/state"
+printf '%s\t%s\t%s\t%s\t%s\n' "$queued_at" "${from:-local}" "$id" "$runs_at" "$name" >> "$HOME/.hermes/state/hermes-enqueue.log"
+jq -nc --arg id "$id" --arg name "$name" --arg runs_at "$runs_at" --arg script "$base.sh" \
+  '{ok: true, id: $id, name: $name, runs_at: $runs_at, script: $script}'
