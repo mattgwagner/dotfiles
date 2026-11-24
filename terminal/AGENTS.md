@@ -465,3 +465,7 @@ command line and the agent harness's `claude --chrome` processes.
 ### Worker secrets: hermes-env-push (omarchy → thinkstation)
 
 `terminal/hermes-env-push` (symlinked in `~/.local/bin`) pushes omarchy's `~/.hermes/.env`, minus the Mercury banking keys and Hermes runtime knobs, plus `~/.config/{fastmail,esferas,ocs-tools}/` (mirrored with `--delete`) to thinkstation. User units `hermes-env-push.path` (on change) and `.timer` (daily 06:30) drive it; a failure sends one Telegram alert per day. Edit keys on omarchy only; the worker copy is overwritten. Never sync `~/.hermes` itself.
+
+### Vault backup: vault-backup.sh + vault-merge-repair (omarchy, thinkstation)
+
+`terminal/vault-backup.sh` (symlinked as `~/.local/bin/vault-backup.sh`, run hourly by `vault-backup.timer`) commits, merges `origin/main` and pushes `~/vault`. The node label comes from the hostname (`omarchy` → `beelink`, the historical name). On a merge conflict it calls `terminal/vault-merge-repair`. That script merges in a throwaway worktree under `~/.cache` (conflict markers never reach the Obsidian-synced tree) and resolves each conflicted file with the live, Obsidian-converged copy, but only after proving the live file holds every line both sides added. Then it fast-forwards the live checkout. If it refuses, the old path applies: the failure is counted and Telegram fires at the second stuck cycle. The Telegram chat comes from `TELEGRAM_HOME_CHANNEL` in `~/.hermes/.env`. This repo is public: no addresses or chat IDs in these scripts.
