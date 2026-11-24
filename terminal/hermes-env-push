@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# hermes-env-push [host]  (default: thinkstation)
+#
+# One-way push of omarchy's secrets to a worker so skills there (support-ticket,
+# log-cannon, fastmail, ...) find the same keys. omarchy is the only place to
+# edit them: anything changed on the worker is overwritten on the next push.
+#   ~/.hermes/.env  -> filtered: no Mercury banking keys, no Hermes runtime knobs
+#   ~/.config/{fastmail,esferas,ocs-tools}/ -> mirrored (--delete)
+# Never ~/.hermes itself (cron jobs, state): the worker must not look like a
+# second Hermes. Run by hermes-env-push.path (on change) and .timer (daily).
+# Failure -> one Telegram alert per day.
+set -uo pipefail
+host="${1:-thinkstation}"
+ENV="$HOME/.hermes/.env"
+EXCLUDE='^(MERCURY_API_KEY_[A-Z_]+|TERMINAL_[A-Z_]+|BROWSERBASE_[A-Z_]+|BROWSER_[A-Z_]+|[A-Z]+_TOOLS_DEBUG)='
+DIRS=(fastmail esferas ocs-tools)
+STAMP="${XDG_STATE_HOME:-$HOME/.local/state}/hermes-env-push.alerted"
+SSH=(ssh -o BatchMode=yes -o ConnectTimeout=15)
+
+log() { echo "hermes-env-push: $*" >&2; }
+fail() {
+  log "FAILED: $1"
+  [ "$(cat "$STAMP" 2>/dev/null)" = "$(date +%F)" ] && exit 1
+  tok=$(sed -n 's/^TELEGRAM_BOT_TOKEN=//p' "$ENV" | tr -d "\"'")
+  chat=$(sed -n 's/^TELEGRAM_HOME_CHANNEL=//p' "$ENV" | tr -d "\"'")
+  if [ -n "$tok" ] && [ -n "$chat" ] && curl -fsS -m 20 "https://api.telegram.org/bot${tok}/sendMessage" \
+      --data-urlencode "chat_id=${chat}" \
+      --data-urlencode "text=hermes-env-push to ${host} failed: $1. Worker keys may be stale. journalctl --user -u hermes-env-push" >/dev/null; then
+    mkdir -p "$(dirname "$STAMP")" && date +%F > "$STAMP"
+  fi
+  exit 1
+}
+
+[ -r "$ENV" ] || fail "no $ENV"
+filtered=$(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$ENV" | grep -vE "$EXCLUDE") || fail "filter produced nothing"
+printf '%s\n' "$filtered" | "${SSH[@]}" "$host" \
+  'umask 077 && mkdir -p ~/.hermes && cat > ~/.hermes/.env.tmp && chmod 600 ~/.hermes/.env.tmp && mv ~/.hermes/.env.tmp ~/.hermes/.env' \
+  || fail ".env copy"
+
+for d in "${DIRS[@]}"; do
+  [ -d "$HOME/.config/$d" ] || continue
+  rsync -a --delete --chmod=D700,F600 -e "${SSH[*]}" "$HOME/.config/$d/" "$host:.config/$d/" || fail "~/.config/$d sync"
+done
+
+rm -f "$STAMP"
+log "pushed to $host: $(printf '%s\n' "$filtered" | wc -l) env keys, ${DIRS[*]}"

@@ -461,3 +461,7 @@ ps -eo pid,etimes,args | awk '/chrom/ && !/type=/'   # inspect before killing
 
 Kill strays **by PID**. Never `pkill -f chrom` — the pattern matches your own
 command line and the agent harness's `claude --chrome` processes.
+
+### Worker secrets: hermes-env-push (omarchy → thinkstation)
+
+`terminal/hermes-env-push` (symlinked in `~/.local/bin`) pushes omarchy's `~/.hermes/.env`, minus the Mercury banking keys and Hermes runtime knobs, plus `~/.config/{fastmail,esferas,ocs-tools}/` (mirrored with `--delete`) to thinkstation. User units `hermes-env-push.path` (on change) and `.timer` (daily 06:30) drive it; a failure sends one Telegram alert per day. Edit keys on omarchy only; the worker copy is overwritten. Never sync `~/.hermes` itself.
